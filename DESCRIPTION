@@ -1,0 +1,23 @@
+Package: tidyMBO
+Type: Package
+Title: Tidy Bayesian and Model Based Optimiziation of Keras NLP models. 
+Version: 0.0.1
+Author: Who wrote it
+Maintainer: Simon Roth <sy-ro@gmx.net>
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: What license is it under?
+Imports:
+    dplyr,
+    magrittr,
+    mlrMBO,
+    ggplot2,
+    keras,
+    tidyTX,
+    purrr,
+    Metrics,
+    randomForest,
+    parallelMap,
+    progress,
+    crayon
+RoxygenNote: 6.0.1

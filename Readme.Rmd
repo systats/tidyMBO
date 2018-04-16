@@ -1,0 +1,242 @@
+---
+title: "tidy.mbo vignette"
+author: "Simon"
+date: "14 4 2018"
+output: github_document
+---
+
+
+## Packages
+
+```{r}
+#devtools::install_github("systats/tidy.mbo", force = T)
+pacman::p_load(tidyverse, dplyr, purrr, rsample, data.table, magrittr, tidyTX, keras, mlrMBO, tidy.mbo, ggthemes, Smisc, randomForest, parallelMap, emoa)
+#keras::install_keras()
+set.seed(2018)
+ggplot2::theme_set(ggthemes::theme_few())
+```
+
+## Data
+
+```{r}
+dt <- get(load("Readme_files/df_clean.Rdata")) %>% 
+  #mutate(index = 1:n()) %>%
+  dplyr::select(party_id, text_lemma, text_word) %>%
+  mutate(index = 1:n()) %>%
+  tidy.mbo::split_data(p = .7)
+```
+
+```{r}
+listLearners("regr", properties = c("factors", "se"))
+#listLearnerProperties("regr")
+```
+
+## Hyper Params
+
+```{r}
+params <- makeParamSet(
+    makeIntegerParam("max_features", lower = 2000, upper = 10000),
+    makeIntegerParam("maxlen", lower = 10, upper = 40),
+    makeIntegerParam("batch_size", lower = 10, upper = 30),
+    makeIntegerParam("output_dim", lower = 60, upper = 200),
+    makeDiscreteParam("output_fun", values = c("softmax", "relu", "sigmoid")),
+    makeDiscreteParam("arch", values = c("fasttext", "lstm", "bilstm", "mlp"))
+    ### LSTM only
+    #makeIntegerParam("lstm_units", lower = 60, upper = 300, requires = quote(arch == "lstm")),
+    #makeNumericParam("dropout", lower = .1, upper = .5, requires = quote(arch == "lstm")),
+    #makeNumericParam("recurrent_dropout", lower = .1, upper = .5, requires = quote(arch == "lstm"))
+  )
+```
+
+
+## Run Main
+
+* Hold-Out Set
+    + Training set for prediction
+    + Validation set performance training phase
+    + Test set for likely future perfromance
+* Cross-validation (for limited data size)
+    + k-fold cross validation, divides data into ko subsets of qual size.
+    + Build model on k-1 data folds leaving one out -> leave one out (loo) if k equals N.
+
+
+
+| Metric Type | Metric Name | Function Name | Formula |
+| ---- | ------------------------ | ---- | ------------------------------- |
+| classification | Classification Error | ce | $\frac{1}{n} \sum_{i=1}^n I(x_i \neq y_i)$ |
+| classification | Accuracy | accuracy | $\frac{1}{n} \sum_{i=1}^n I(x_i = y_i)$ |
+| classification | F1 Score | f1 | $\frac{2 * \text{precision} * \text{recall}}{\text{precision} + \text{recall}}$ |
+| binary classification | Area Under ROC Curve | auc | $\int_0^1 [1 - G_1(G^{-1}_0(1 - v))] dv$. `help(auc)` for details. |
+| binary classification | Log Loss | ll | $x_i * \ln(y_i) + (1 - x_i) * \ln(1 - y_i)$ |
+| binary classification | Mean Log Loss | logloss | $\frac{1}{n} \sum_{i=1}^n x_i * \ln(y_i) + (1 - x_i) * \ln(1 - y_i)$
+
+
+
+```{r, eval = F}
+#install.packages("Metrics")
+results <- tidy.mbo::run_mbo(
+    data = dt, 
+    params = params, 
+    target = "party_id", 
+    text = "text_word",
+    name = "stack_model1", 
+    n_init = 3, 
+    n_main = 50,
+    metric = c("accuracy", ), # experimental stage
+    parallel = F # Only Unix/Mac no Windows support
+  )
+```
+
+
+
+```{r, eval = F}
+perform <- results$df
+perform
+
+mode1 <- list(maxlen = 30)%>% 
+  run_keras_steps(data = dt, target = "party_id", text = "text_lemma", reconstruct = T)
+
+caret::confusionMatrix(mode1$perform, dt$test$party_id)
+```
+
+```{r, echo = F}
+#save(perform, file = "perform.Rdata")
+load("perform.Rdata")
+perform %>% as.tibble()
+```
+
+
+Distribution of accuracy history
+
+```{r hist}
+perform %>%
+  ggplot(aes(y, fill = is.na(exec.time))) + 
+  geom_histogram()
+```
+
+Distribution of accuracy history
+
+```{r dens2, eval = F}
+#devtools::install_github("tidyverse/ggplot2")
+perform %>%
+  ggplot(aes(max_features, maxlen, colour = y, size = y)) + 
+  geom_point(alpha = .5) +
+  scale_size_continuous(range(1, 10)) +
+  viridis::scale_colour_viridis()
+
+perform %>%
+  ggplot(aes(max_features, maxlen, colour = y)) + 
+  geom_point() +
+  geom_density_2d()
+
+perform %>%
+  ggplot(aes(max_features, maxlen)) + 
+    stat_density_2d(geom = "polygon", aes(fill = ..level.., alpha=..level..)) +
+    viridis::scale_fill_viridis()
+
+perform %>%
+  ggplot(aes(max_features, maxlen)) + 
+  stat_density_2d(geom = "raster", aes(fill = ..density..), contour = F) +
+    viridis::scale_fill_viridis()
+  
+perform %>%
+  ggplot(aes(max_features, maxlen)) + 
+  stat_density_2d(geom = "raster", aes(fill = ..density.., alpha=..density..), contour = F) +
+    viridis::scale_fill_viridis()
+
+perform %>%
+  ggplot(aes(max_features, maxlen)) + 
+  stat_density_2d(geom = "point", aes(size = ..density..), n = 20, contour = F, alpha = .7)
+```
+
+```{r, fig.height=6, fig.width=8}
+perform %>%
+  dplyr::select(
+    max_features, maxlen, 
+    batch_size,output_dim, 
+    output_fun, y
+  ) %>%
+  tidyr::gather("param", "value", -y, -output_fun) %>%
+  ggplot(aes(value, y, colour = y)) + 
+  #geom_tile() +
+  #geom_raster() + 
+  geom_density_2d(alpha = .8, color = "grey")+
+  geom_point() +
+  viridis::scale_colour_viridis("Accuracy") +
+  facet_grid(output_fun~param, scales = "free") +
+  theme(legend.position = "bottom")
+```
+
+```{r, eval = F}
+perform %>%
+  dplyr::select(max_features:output_fun) %>%
+  dplyr::select_if(is.numeric) %>%
+  mutate(id = 1:n()) %>%
+  gather("var", "value", -id) %>%
+  ggplot(aes(value)) +
+  geom_histogram() +
+  ggplot2::facet_wrap(. ~ var)
+```
+
+
+Experiment Improvement
+
+```{r}
+perform %>%
+  arrange(step) %>%
+  mutate(best = Smisc::cumMax(y)) %>%
+  ggplot(aes(step, best)) +
+  geom_step() +
+  labs(x = "Trials", y = "Best Value")
+
+perform %>%
+  arrange(step) %>%
+  group_by(arch) %>%
+  mutate(best = Smisc::cumMax(y)) %>%
+  ungroup() %>%
+  ggplot(aes(step, best, color = output_fun)) +
+  geom_step() +
+  geom_step(aes(step, y, color = output_fun), alpha = .3) +
+  labs(x = "Trials", y = "Best Value")  +
+  facet_grid(.~arch) +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+perform %>%
+  ggplot(aes(max_features, maxlen, colour = y, label = step)) + 
+  geom_point() +
+  geom_path(alpha = .5) +
+  geom_text() +
+  viridis::scale_colour_viridis()
+```
+
+
+
+
+```{r ggally, eval = F}
+#devtools::install_github("ggobi/ggally")
+library(GGally)
+my_bin <- function(data, mapping, ..., low = "#132B43", high = "#56B1F7") {
+  ggplot(data = data, mapping = mapping) +
+    geom_hex(...) +
+    scale_fill_gradient(low = low, high = high)
+}
+
+perform %>%
+  dplyr::select(output_dim, maxlen) %>%
+  ggpairs()
+    #mapping = aes(color = y),
+    # lower = list(
+    #   combo = wrap("facethist", binwidth = 1),
+    #   continuous = wrap(my_bin, binwidth = c(5, 0.5), high = "red")
+    # )
+```
+
+
+## Understand Parameters
+
+```{r lm}
+lm(y ~ ., data = perform) %>%
+  broom::tidy()
+```
