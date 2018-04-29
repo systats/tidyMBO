@@ -17,6 +17,8 @@ run_mbo(data, params, target, text, n_init = 5, n_main = 30, name = "",
 \item{n_main}{main iterations}
 
 \item{name}{the name}
+
+\item{const}{constants}
 }
 \value{
 list(data = data, params = params)

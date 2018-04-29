@@ -8,24 +8,43 @@
 #' @return metric
 #'
 #' @export
-run_keras_steps <- function(params, data, target, text, metric, reconstruct = F){
+run_mbo_steps <- function(params, data, target, text, metric, reconstruct = F){
 
-  out <- list(data = data, params = params) %>%
-    text_to_seq(text) %>%
-    compile_keras_model(target) %>%
-    learn_keras_model(target, reconstruct = reconstruct)
-
+  container <- list(data = data, params = params)
+  
+  ### H2O Logic
+  if(container$params$arch %in% c("gbm")){
+    out <- container %>%
+      #text_to_matrix(text) %>%
+      learn_h2o_model(target, reconstruct = reconstruct)
+  }
+  
+  
+  
+  ### Keras Logic
+  if(container$params$arch %in% c("fasttext", "lstm", "bilstm")){
+    if(container$params$arch %in% c("mlp")){
+      out <- container %<>%
+        text_to_matrix_keras(text) %>%
+        compile_keras_model(target) %>%
+        learn_keras_model(target, reconstruct = reconstruct)    
+    } else {
+      out <- container %>%
+        text_to_seq(text) %>%
+        compile_keras_model(target) %>%
+        learn_keras_model(target, reconstruct = reconstruct)
+    }
+  }
+  
   if(reconstruct){
     return(out) 
   } else {
     metric <- metric %>% 
-      purrr::map_dbl(~out$perform[[.x]])
+      purrr::map_dbl(~ out$perform[[.x]])
     
     return(metric) 
   }
 }
-
-
 
 
 #' start_parallel_core
@@ -68,7 +87,9 @@ progressively <- function(.f, .n, ...) {
 #'
 #' tidy MBO
 #'
+#' @data data input
 #' @param params params
+#' @param const constants
 #' @param target target variable
 #' @param name the name
 #' @param n_init burn in iterations
@@ -88,42 +109,41 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
     #logLoss = T, 
     #ll = T
   ) # Minimize?
-  
+
   minimize <- list_metrics[metric] %>% unlist %>% as.logical()
-  #class(minimize)
+
   cat(crayon::blue(":::::::::::::::::::MBO:::::::::::::::::\n")) 
+  
   ### Main Definition Function
   if(n_obj == 1) {
     constructor <- smoof::makeSingleObjectiveFunction(
       name = name,
       fn = function(x) {
-        perform <- run_keras_steps(x, data = data, target = target, text = text, metric = metric)
+        perform <- run_mbo_steps(x, data = data, target = target, text = text, metric = metric)
         return(perform)
       },
-      par.set = params,
+      par.set = params, 
       has.simple.signature = F, # function expects a named list of parameter values
       minimize = minimize # to increase accuracy
     )
-    crayon::blue("[1] ") %+% 
-      crayon::green("Single Objective Function") %+% 
-      crayon::red(paste0(" (", paste(metric, collapse = ", ") ,")\n")) %>%
-      cat() 
+    # cat(crayon::blue("[1] ") %+% 
+    #   crayon::green("Single Objective Function") %+% 
+    #   crayon::red(paste0(" (", paste(metric, collapse = ", ") ,")\n")))
   } else {
     constructor <- smoof::makeMultiObjectiveFunction(
       name = name,
       fn = function(x) {
-        perform <- run_keras_steps(x, data = data, target = target, text = text, metric = metric)
+        perform <- run_mbo_steps(x, data = data, target = target, text = text, metric = metric)
         return(perform)
       },
-      par.set = params,
+      par.set = params, 
       n.objectives = n_obj,
       has.simple.signature = F, # function expects a named list of parameter values
       minimize = minimize # to increase accuracy
     )
-    crayon::blue("[1] ") %+% 
-      crayon::green("Multi Objective Function") %+% 
-      crayon::red(paste0(" (", paste(metric, collapse = ", ") ,")\n")) %>%
-      cat() 
+    # cat(crayon::blue("[1] ") %+% 
+    #   crayon::green("Multi Objective Function") %+% 
+    #   crayon::red(paste0(" (", paste(metric, collapse = ", ") ,")\n"))) 
   }
   
   init <- ParamHelpers::generateDesign(
@@ -133,8 +153,7 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
   )
 
   crayon::blue("[2] ") %+% 
-    crayon::green("Burning in Random Design\n") %>% 
-    cat()
+    cat(crayon::green("Burning in Random Design\n"))
   
   progress_fun <- progressively(.f = constructor, .n = nrow(init))
 
@@ -145,7 +164,7 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
   }
   
   init <- init %>%
-    split(seq_row(init)) %>%
+    split(seq_along(init[[1]])) %>%
     purrr::map(progress_fun) %>%
     purrr::reduce(rbind) %>%
     as_tibble() %>%
@@ -161,14 +180,12 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
 
   if(type == "integer"){
     
-    crayon::blue("[3] ") %+% 
-      crayon::green("Continous Search Space\n") %>% 
-      cat()
+    cat(crayon::blue("[3] ") %+% 
+      crayon::green("Continous Search Space\n"))
     
-    crayon::blue("[4] ") %+% 
+    cat(crayon::blue("[4] ") %+% 
       crayon::green("Surrogate Model: ") %+% 
-      crayon::red("Bayesian Optimization\n") %>% 
-      cat()
+      crayon::red("Bayesian Optimization\n"))
     
     surrogate <- mlr::makeLearner(
       cl = "regr.km",
@@ -184,14 +201,12 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
 
   if(type == "factor"){
     
-    crayon::blue("[3] ") %+% 
-      crayon::green("Discrete Search Space\n") %>% 
-      cat()
+    cat(crayon::blue("[3] ") %+% 
+      crayon::green("Discrete Search Space\n"))
     
-    crayon::blue("[4] ") %+% 
+    cat(crayon::blue("[4] ") %+% 
       crayon::green("Surrogate Model: ") %+% 
-      crayon::red("Random Forest Regression\n") %>% 
-      cat()
+      crayon::red("Random Forest Regression\n"))
     
     surrogate <- makeLearner("regr.randomForest", predict.type = "se")
     

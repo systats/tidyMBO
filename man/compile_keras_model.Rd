@@ -6,6 +6,11 @@
 \usage{
 compile_keras_model(container, target)
 }
+\arguments{
+\item{container}{...}
+
+\item{text}{...}
+}
 \value{
 list(model = model, params = params, data = container$data)
 }

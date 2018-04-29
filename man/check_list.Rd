@@ -12,7 +12,7 @@ check_list(a, b)
 \item{b}{a list of input parameters}
 }
 \value{
-out
+out ...
 }
 \description{
 check_list compares two lists and augments missing entries.

@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Packages
+
+```{r}
+pacman::p_load(tidyverse, dplyr, purrr, rsample, data.table, magrittr, tidyTX, slam, ParamHelpers, data.table, mlr, mlrMBO)
+
+# keras::install_keras()
+set.seed(2018)
+ggplot2::theme_set(ggthemes::theme_few())
+```
+
+## Data
+
+```{r}
+dt <- get(load("../Readme_files/df_clean.Rdata")) %>% 
+  #mutate(index = 1:n()) %>%
+  dplyr::select(party_id, text_lemma, text_word) %>%
+  mutate(index = 1:n()) %>%
+  mutate(id = 1:n()) %>%
+  dplyr::filter(text_lemma != "" | !is.na(text_lemma)) %>%
+  tidyMBO::split_data(p = .7)
+```
+
+## text2vec prep
+
+```{r}
+dtms <- text_to_matrix(list(data=dt, params = NULL), text = "text_lemma")
+str(dtms)
+#colnames(dtms$data$test_input)
+```
+
+## GBM 
+
+```{r}
+library(h2o)
+
+h2o::h2o.init()
+
+train_dtm <- dtms$data$train_input %>%
+  h2o::as.h2o()
+x <- colnames(train_dtm)
+y <- as.h2o(dtms$data$train$party_id)
+# h2o::h2o.nrow(train_dtm)
+# h2o::h2o.nrow(y)
+h2o_train_dtm <- h2o::h2o.cbind(train_dtm, y)
+y <- colnames(y)
+
+
+gbm <- h2o.gbm(
+  training_frame = h2o_train_dtm,
+  #validation_frame = valid,
+  x = x,                    
+  y = y,                 
+  # ntrees = 30,## add a few trees (from 20, though default is 50)
+  # learn_rate = 0.3,## increase the learning rate even further
+  # max_depth = 10, 
+  # sample_rate = 0.7, ## use a random 70% of the rows to fit each tree
+  # col_sample_rate = 0.7, ## use 70% of the columns to fit each tree
+  # stopping_rounds = 2,       
+  # stopping_tolerance = 0.01,
+  # score_each_iteration = T, 
+  seed = 2018
+)
+```
+
+
+```{r}
+test_dtm <- dtms$data$test_input %>%
+  h2o::as.h2o()
+preds <- h2o::h2o.predict(gbm, newdata = test_dtm) %>%
+  as_tibble()
+
+class(preds)
+table(dtms$data$test$party_id, preds$predict)
+caret::confusionMatrix(as.factor(dtms$data$test$party_id), preds$predict)
+```
+
+
+## tidyMBO
+
+```{r}
+library(h2o)
+h2o.init()
+h2o.no_progress()
+
+params <- makeParamSet(
+    makeDiscreteParam("arch", values = "gbm"),
+    makeIntegerParam("max_features", lower = 2000, upper = 10000),
+    makeIntegerParam("ntrees", lower = 20, upper = 200),
+    makeIntegerParam("max_depth", lower = 2, upper = 30), # before stopping
+    makeNumericParam("learn_rate", lower = .1, upper = .9), # need for splitting
+    makeNumericParam("sample_rate", lower = .5, upper = .9), # use a random 70% of the rows to fit each tree
+    #makeNumericParam("col_sample_rate", lower = .5, upper = .9), # use a random 70% of the rows to fit each tree
+    makeIntegerParam("stopping_rounds", lower = 1, upper = 5), # use a
+    makeIntegerParam("nbins", lower = 10, upper = 30) # need for splitting
+  )
+    #makeNumericParam("stopping_tolerance", lower = .001, upper = .1), # use a
+
+params <- makeParamSet(
+    makeDiscreteParam("arch", values = "gbm"),
+    makeIntegerParam("max_features", lower = 2000, upper = 4000),
+    makeIntegerParam("ntrees", lower = 20, upper = 50),
+    makeIntegerParam("max_depth", lower = 2, upper = 5), # before stopping
+    makeNumericParam("learn_rate", lower = .1, upper = .9), # need for splitting
+    makeNumericParam("sample_rate", lower = .5, upper = .9), # use a random 70% of the rows to fit each tree
+    #makeNumericParam("col_sample_rate", lower = .5, upper = .9), # use a random 70% of the rows to fit each tree
+    makeIntegerParam("stopping_rounds", lower = 1, upper = 2), # use a
+    makeIntegerParam("nbins", lower = 10, upper = 15) # need for splitting
+  )
+
+
+results <- run_mbo(
+    data = dt, 
+    params = params, 
+    target = "party_id", 
+    text = "text_lemma",
+    name = "stack_model1", 
+    n_init = 2, 
+    n_main = 2,
+    metric = c("accuracy"), # experimental stage
+    parallel = F # Only Unix/Mac no Windows support
+  )
+```
+
+
+
+
+
+
+
+
+
+

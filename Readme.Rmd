@@ -1,5 +1,5 @@
 ---
-title: "tidy.mbo vignette"
+title: "tidyMBO vignette"
 author: "Simon"
 date: "14 4 2018"
 output: github_document
@@ -9,8 +9,12 @@ output: github_document
 ## Packages
 
 ```{r}
-#devtools::install_github("systats/tidy.mbo", force = T)
-pacman::p_load(tidyverse, dplyr, purrr, rsample, data.table, magrittr, tidyTX, keras, mlrMBO, tidy.mbo, ggthemes, Smisc, randomForest, parallelMap, emoa)
+# devtools::install_github("systats/tidyMBO", force = T)
+# devtools::install_github("rstudio/keras")
+# devtools::install_github("rstudio/reticulate")
+#keras::install_keras()
+pacman::p_load(tidyverse, dplyr, purrr, rsample, data.table, magrittr, tidyTX, keras, mlrMBO, tidyMBO, ggthemes, Smisc, randomForest, parallelMap, emoa, magrittr, Metrics)
+
 #keras::install_keras()
 set.seed(2018)
 ggplot2::theme_set(ggthemes::theme_few())
@@ -18,17 +22,23 @@ ggplot2::theme_set(ggthemes::theme_few())
 
 ## Data
 
+
 ```{r}
 dt <- get(load("Readme_files/df_clean.Rdata")) %>% 
   #mutate(index = 1:n()) %>%
   dplyr::select(party_id, text_lemma, text_word) %>%
   mutate(index = 1:n()) %>%
-  tidy.mbo::split_data(p = .7)
+  mutate(id = 1:n()) %>%
+  tidyMBO::split_data(p = .7)
 ```
 
+
 ```{r}
-listLearners("regr", properties = c("factors", "se"))
-#listLearnerProperties("regr")
+explore <- corpus_description(data = dt$train, text = "text_lemma")
+explore$token$tokens %>%
+  ggplot(aes(n)) +
+  geom_histogram() +
+  xlim(0, 30)
 ```
 
 ## Hyper Params
@@ -39,8 +49,8 @@ params <- makeParamSet(
     makeIntegerParam("maxlen", lower = 10, upper = 40),
     makeIntegerParam("batch_size", lower = 10, upper = 30),
     makeIntegerParam("output_dim", lower = 60, upper = 200),
-    makeDiscreteParam("output_fun", values = c("softmax", "relu", "sigmoid")),
-    makeDiscreteParam("arch", values = c("fasttext", "lstm", "bilstm", "mlp"))
+    makeDiscreteParam("output_fun", values = c("softmax", "sigmoid")),
+    makeDiscreteParam("arch", values = c("fasttext", "lstm", "bilstm"))
     ### LSTM only
     #makeIntegerParam("lstm_units", lower = 60, upper = 300, requires = quote(arch == "lstm")),
     #makeNumericParam("dropout", lower = .1, upper = .5, requires = quote(arch == "lstm")),
@@ -49,7 +59,22 @@ params <- makeParamSet(
 ```
 
 
+## Single MLP Model
+
+```{r}
+tokenizer <- keras::text_tokenizer(num_words = 5000)
+keras::fit_text_tokenizer(tokenizer, x = dt$train$text_lemma)
+train_input <- sequences_to_matrix(tokenizer, dt$train$text_lemma, mode = 'binary')
+```
+
+
 ## Run Main
+
+
+```{r}
+listLearners("regr", properties = c("factors", "se"))
+#listLearnerProperties("regr")
+```
 
 * Hold-Out Set
     + Training set for prediction
@@ -71,18 +96,24 @@ params <- makeParamSet(
 | binary classification | Mean Log Loss | logloss | $\frac{1}{n} \sum_{i=1}^n x_i * \ln(y_i) + (1 - x_i) * \ln(1 - y_i)$
 
 
-
 ```{r, eval = F}
-#install.packages("Metrics")
-results <- tidy.mbo::run_mbo(
+library(h2o)
+
+h2o.init(
+  nthreads=-1,  ## -1: use all available threads
+  max_mem_size = "2G")
+# h2o.removeAll()
+
+
+results <- run_mbo(
     data = dt, 
     params = params, 
     target = "party_id", 
     text = "text_word",
     name = "stack_model1", 
-    n_init = 3, 
-    n_main = 50,
-    metric = c("accuracy", ), # experimental stage
+    n_init = 5, 
+    n_main = 2,
+    metric = c("accuracy"), # experimental stage
     parallel = F # Only Unix/Mac no Windows support
   )
 ```
@@ -94,7 +125,7 @@ perform <- results$df
 perform
 
 mode1 <- list(maxlen = 30)%>% 
-  run_keras_steps(data = dt, target = "party_id", text = "text_lemma", reconstruct = T)
+  run_mbo_steps(data = dt, target = "party_id", text = "text_lemma", reconstruct = T)
 
 caret::confusionMatrix(mode1$perform, dt$test$party_id)
 ```

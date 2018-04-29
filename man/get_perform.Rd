@@ -6,6 +6,11 @@
 \usage{
 get_perform(actual, predicted)
 }
+\arguments{
+\item{actual}{...}
+
+\item{predicted}{...}
+}
 \value{
 list(metrics)
 }

@@ -4,9 +4,13 @@
 \alias{keras_predict}
 \title{keras_predict}
 \usage{
-keras_predict(model, seq, index = 1)
+keras_predict(model, test_input, index = 1)
 }
 \arguments{
+\item{model}{...}
+
+\item{test_input}{...}
+
 \item{index}{correction}
 }
 \value{
