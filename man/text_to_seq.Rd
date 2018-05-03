@@ -4,7 +4,7 @@
 \alias{text_to_seq}
 \title{text_to_seq}
 \usage{
-text_to_seq(container, text)
+text_to_seq(container)
 }
 \arguments{
 \item{container}{...}

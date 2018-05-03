@@ -2,16 +2,12 @@
 % Please edit documentation in R/run_mbo.R
 \name{run_mbo_steps}
 \alias{run_mbo_steps}
-\title{run_keras_steps}
+\title{run_mbo_steps}
 \usage{
-run_mbo_steps(params, data, target, text, metric, reconstruct = F)
+run_mbo_steps(container, metric = "accuracy", reconstruct = F)
 }
 \arguments{
 \item{params}{params}
-
-\item{target}{target variable}
-
-\item{text}{text variable}
 }
 \value{
 metric

@@ -1,0 +1,22 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+* write rmd report with best classifier performance and analytics
+* save opt history for later analysis (meta analysis?!)
+* develop shiny app for interactive quality control
+
+
+* other models
+* other DV
+    + rm JUST moral decline. check categories
+* other Train/Test Split
+* Up/Downsampling: balance no difference
+* deepfeatures
+* text transfomrations
+* look up falsely classified cases
+
+

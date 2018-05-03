@@ -57,38 +57,35 @@ build_dtm <- function(vectorizer, text, id){
 #' matrix tokenizer
 #'
 #' @param container ...
-#' @param text ...
 #' @return list(data = data, params = params)
 #'
 #' @export
-text_to_matrix <- function(container, text){
+text_to_matrix <- function(container){
   
   #container <- list(data=dt, params = params)
   #text <- "text_lemma"
   
   params <- list(
-    max_features = 2000,
-    batch_size = 40,
-    maxlen = 30
+    max_vocab = 2000
   ) %>%
     check_list(container$params)
   
 
   vec <- build_vectorizer(
-    text = container$data$train[[text]], 
+    text = container$data$train[[params$text]], 
     id = container$data$train$id,
-    max_features = params$max_features
+    max_features = params$max_vocab
   )
   
   train_input <- vec %>% 
     build_dtm(
-      text = container$data$train[[text]],
+      text = container$data$train[[params$text]],
       id = container$data$train$id
     )
   
   test_input <- vec %>% 
     build_dtm(
-      text = container$data$test[[text]],
+      text = container$data$test[[params$text]],
       id = container$data$test$id
     )
 
@@ -107,24 +104,24 @@ text_to_matrix <- function(container, text){
 #' @return list(data = data, params = params)
 #'
 #' @export
-text_to_seq <- function(container, text){
+text_to_seq <- function(container){
   
   params <- list(
-    max_features = 2000,
+    max_vocab = 2000,
     batch_size = 40,
     maxlen = 30
   ) %>%
     check_list(container$params)
   
-  tokenizer <- keras::text_tokenizer(num_words = params$max_features)
-  keras::fit_text_tokenizer(tokenizer, x = container$data$train[[text]])
+  tokenizer <- keras::text_tokenizer(num_words = params$max_vocab)
+  keras::fit_text_tokenizer(tokenizer, x = container$data$train[[params$text]])
   
   train_input <- tokenizer %>%
-    keras::texts_to_sequences(container$data$train[[text]]) %>%
+    keras::texts_to_sequences(container$data$train[[params$text]]) %>%
     keras::pad_sequences(maxlen = params$maxlen, value = 0)
   
   test_input <- tokenizer %>%
-    keras::texts_to_sequences(container$data$test[[text]]) %>%
+    keras::texts_to_sequences(container$data$test[[params$text]]) %>%
     keras::pad_sequences(maxlen = params$maxlen, value = 0)
   
   data <- c(container$data, list(train_input = train_input, test_input = test_input))
@@ -142,7 +139,7 @@ text_to_seq <- function(container, text){
 #' @return list(data = data, params = params)
 #'
 #' @export
-text_to_matrix_keras <- function(container, text){
+text_to_matrix_keras <- function(container){
   
   params <- list(
     max_features = 2000,
@@ -152,10 +149,10 @@ text_to_matrix_keras <- function(container, text){
     check_list(container$params)
   
   tokenizer <- keras::text_tokenizer(num_words = params$max_features)
-  keras::fit_text_tokenizer(tokenizer, x = container$data$train[[text]])
+  keras::fit_text_tokenizer(tokenizer, x = container$data$train[[params$text]])
   
-  train_input <- sequences_to_matrix(tokenizer, container$data$train[[text]], mode = 'binary')
-  test_input <- sequences_to_matrix(tokenizer, container$data$test[[text]], mode = 'binary')
+  train_input <- sequences_to_matrix(tokenizer, container$data$train[[params$text]], mode = 'binary')
+  test_input <- sequences_to_matrix(tokenizer, container$data$test[[params$text]], mode = 'binary')
   
   data <- c(container$data, list(train_input = train_input, test_input = test_input))
   
@@ -178,25 +175,4 @@ split_data <- function(data, p){
   test  <- data[-train_id,]
   
   return(list(train = train, test = test))
-}
-
-#' tidy
-#'
-#' convienence function for extracting the parameter
-#'
-#' @param run ...
-#' @return perform ...
-#'
-#' @export
-tidy <- function(run, metric){
-  perform <- run$opt.path$env$path %>% 
-    cbind(
-      exec.time = run$opt.path$env$exec.time,
-      step = run$opt.path$env$dob
-    ) %>% 
-    #dplyr::arrange(desc(y)) %>% # not reasonable for multi target functions
-    tibble::as_tibble()
-  
-  colnames(perform)[stringr::str_detect(colnames(perform), "^y")] <- metric
-  return(perform)
 }

@@ -6,7 +6,8 @@ output: html_notebook
 ## Packages
 
 ```{r}
-pacman::p_load(tidyverse, dplyr, purrr, rsample, data.table, magrittr, tidyTX, slam, ParamHelpers, data.table, mlr, mlrMBO)
+# devtools::install_github("systats/tidyMBO")
+pacman::p_load(tidyverse, dplyr, purrr, rsample, data.table, magrittr, tidyTX, slam, ParamHelpers, data.table, mlr, mlrMBO, tidyMBO, devtools)
 
 # keras::install_keras()
 set.seed(2018)
@@ -86,7 +87,7 @@ caret::confusionMatrix(as.factor(dtms$data$test$party_id), preds$predict)
 library(h2o)
 h2o.init()
 h2o.no_progress()
-
+# h2o.shutdown()
 params <- makeParamSet(
     makeDiscreteParam("arch", values = "gbm"),
     makeIntegerParam("max_features", lower = 2000, upper = 10000),
@@ -100,17 +101,17 @@ params <- makeParamSet(
   )
     #makeNumericParam("stopping_tolerance", lower = .001, upper = .1), # use a
 
-params <- makeParamSet(
-    makeDiscreteParam("arch", values = "gbm"),
-    makeIntegerParam("max_features", lower = 2000, upper = 4000),
-    makeIntegerParam("ntrees", lower = 20, upper = 50),
-    makeIntegerParam("max_depth", lower = 2, upper = 5), # before stopping
-    makeNumericParam("learn_rate", lower = .1, upper = .9), # need for splitting
-    makeNumericParam("sample_rate", lower = .5, upper = .9), # use a random 70% of the rows to fit each tree
-    #makeNumericParam("col_sample_rate", lower = .5, upper = .9), # use a random 70% of the rows to fit each tree
-    makeIntegerParam("stopping_rounds", lower = 1, upper = 2), # use a
-    makeIntegerParam("nbins", lower = 10, upper = 15) # need for splitting
-  )
+# params <- makeParamSet(
+#     makeDiscreteParam("arch", values = "gbm"),
+#     makeIntegerParam("max_features", lower = 2000, upper = 4000),
+#     makeIntegerParam("ntrees", lower = 20, upper = 50),
+#     makeIntegerParam("max_depth", lower = 2, upper = 5), # before stopping
+#     makeNumericParam("learn_rate", lower = .1, upper = .9), # need for splitting
+#     makeNumericParam("sample_rate", lower = .5, upper = .9), # use a random 70% of the rows to fit each tree
+#     #makeNumericParam("col_sample_rate", lower = .5, upper = .9), # use a random 70% of the rows to fit each tree
+#     makeIntegerParam("stopping_rounds", lower = 1, upper = 2), # use a
+#     makeIntegerParam("nbins", lower = 10, upper = 15) # need for splitting
+#   )
 
 
 results <- run_mbo(
@@ -119,11 +120,14 @@ results <- run_mbo(
     target = "party_id", 
     text = "text_lemma",
     name = "stack_model1", 
-    n_init = 2, 
-    n_main = 2,
+    n_init = 5, 
+    n_main = 30,
     metric = c("accuracy"), # experimental stage
     parallel = F # Only Unix/Mac no Windows support
   )
+
+tidy(results, "accuracy")
+#save(results, file = "results_gbm1.Rdata")
 ```
 
 

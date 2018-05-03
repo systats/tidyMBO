@@ -4,21 +4,19 @@
 \alias{run_mbo}
 \title{run_mbo}
 \usage{
-run_mbo(data, params, target, text, n_init = 5, n_main = 30, name = "",
-  metric, parallel)
+run_mbo(data, params, const = NULL, n_init = 5, n_main = 30, name = "",
+  metric = "accuracy", parallel = F)
 }
 \arguments{
+\item{data}{}
+
 \item{params}{params}
 
-\item{target}{target variable}
+\item{const}{constants}
 
 \item{n_init}{burn in iterations}
 
 \item{n_main}{main iterations}
-
-\item{name}{the name}
-
-\item{const}{constants}
 }
 \value{
 list(data = data, params = params)

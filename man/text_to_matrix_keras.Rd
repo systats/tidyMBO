@@ -4,7 +4,7 @@
 \alias{text_to_matrix_keras}
 \title{text_to_matrix_keras}
 \usage{
-text_to_matrix_keras(container, text)
+text_to_matrix_keras(container)
 }
 \arguments{
 \item{container}{...}

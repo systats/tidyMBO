@@ -4,12 +4,10 @@
 \alias{text_to_matrix}
 \title{h2o_text_to_matrix}
 \usage{
-text_to_matrix(container, text)
+text_to_matrix(container)
 }
 \arguments{
 \item{container}{...}
-
-\item{text}{...}
 }
 \value{
 list(data = data, params = params)

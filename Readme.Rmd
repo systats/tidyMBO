@@ -72,7 +72,7 @@ train_input <- sequences_to_matrix(tokenizer, dt$train$text_lemma, mode = 'binar
 
 
 ```{r}
-listLearners("regr", properties = c("factors", "se"))
+listLearners("regr")
 #listLearnerProperties("regr")
 ```
 

@@ -1,40 +1,34 @@
-#' run_keras_steps
+#' run_mbo_steps
 #'
 #' run all tuning processes
 #'
 #' @param params params
-#' @param target target variable
-#' @param text text variable
 #' @return metric
 #'
 #' @export
-run_mbo_steps <- function(params, data, target, text, metric, reconstruct = F){
+run_mbo_steps <- function(container, metric = "accuracy", reconstruct = F){
 
-  container <- list(data = data, params = params)
-  
   ### H2O Logic
-  if(container$params$arch %in% c("gbm")){
+  if(container$params$arch %in% c("gbm", "dnn", "xgboost", "nb")){
     out <- container %>%
-      #text_to_matrix(text) %>%
-      learn_h2o_model(target, reconstruct = reconstruct)
+      text_to_matrix() %>%
+      learn_h2o_model(reconstruct = reconstruct)
   }
-  
-  
   
   ### Keras Logic
-  if(container$params$arch %in% c("fasttext", "lstm", "bilstm")){
+  if(container$params$arch %in% c("glove", "fasttext", "lstm", "bilstm")){
     if(container$params$arch %in% c("mlp")){
       out <- container %<>%
-        text_to_matrix_keras(text) %>%
-        compile_keras_model(target) %>%
-        learn_keras_model(target, reconstruct = reconstruct)    
+        text_to_matrix_keras() %>%
+        learn_keras_model(reconstruct = reconstruct)    
     } else {
       out <- container %>%
-        text_to_seq(text) %>%
-        compile_keras_model(target) %>%
-        learn_keras_model(target, reconstruct = reconstruct)
+        text_to_seq() %>%
+        learn_keras_model(reconstruct = reconstruct)
     }
   }
+  
+  #out <- list(perform = perform, params = params)
   
   if(reconstruct){
     return(out) 
@@ -88,18 +82,18 @@ progressively <- function(.f, .n, ...) {
 #' tidy MBO
 #'
 #' @data data input
+#' @param data 
 #' @param params params
 #' @param const constants
-#' @param target target variable
-#' @param name the name
 #' @param n_init burn in iterations
 #' @param n_main main iterations
 #' @return list(data = data, params = params)
 #'
 #' @export
-run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = "", metric, parallel){
+run_mbo <- function(data, params, const = NULL, n_init = 5, n_main = 30, name = "", metric = "accuracy", parallel = F){
 
   n_obj <- length(metric)
+  #metric <- "accuracy"
   
   list_metrics <- list(
     accuracy = F, 
@@ -119,7 +113,7 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
     constructor <- smoof::makeSingleObjectiveFunction(
       name = name,
       fn = function(x) {
-        perform <- run_mbo_steps(x, data = data, target = target, text = text, metric = metric)
+        perform <- run_mbo_steps(container = list(data = data, params = c(const, x)), metric = metric)
         return(perform)
       },
       par.set = params, 
@@ -133,7 +127,7 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
     constructor <- smoof::makeMultiObjectiveFunction(
       name = name,
       fn = function(x) {
-        perform <- run_mbo_steps(x, data = data, target = target, text = text, metric = metric)
+        perform <- run_mbo_steps(container = list(data = data, params = c(const, x)), metric = metric)
         return(perform)
       },
       par.set = params, 
@@ -168,7 +162,7 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
     purrr::map(progress_fun) %>%
     purrr::reduce(rbind) %>%
     as_tibble() %>%
-    set_colnames(value = var_names) %>%
+    magrittr::set_colnames(value = var_names) %>%
     cbind(init, .)
 
   type <- init %>%
@@ -178,28 +172,28 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
     any() %>%
     ifelse(., "factor", "integer")
 
-  if(type == "integer"){
-    
-    cat(crayon::blue("[3] ") %+% 
-      crayon::green("Continous Search Space\n"))
-    
-    cat(crayon::blue("[4] ") %+% 
-      crayon::green("Surrogate Model: ") %+% 
-      crayon::red("Bayesian Optimization\n"))
-    
-    surrogate <- mlr::makeLearner(
-      cl = "regr.km",
-      predict.type = "se",
-      covtype = "matern3_2",
-      control = list(trace = F)
-    )
-    
-    control <- mlrMBO::makeMBOControl() %>%
-      mlrMBO::setMBOControlTermination(iters = n_main) %>%
-      mlrMBO::setMBOControlInfill(crit = makeMBOInfillCritEI())
-  }
+  # if(type == "integer"){
+  #   
+  #   cat(crayon::blue("[3] ") %+% 
+  #     crayon::green("Continous Search Space\n"))
+  #   
+  #   cat(crayon::blue("[4] ") %+% 
+  #     crayon::green("Surrogate Model: ") %+% 
+  #     crayon::red("Bayesian Optimization\n"))
+  #   
+  #   surrogate <- mlr::makeLearner(
+  #     cl = "regr.km",
+  #     predict.type = "se",
+  #     covtype = "matern3_2",
+  #     control = list(trace = F)
+  #   )
+  #   
+  #   control <- mlrMBO::makeMBOControl() %>%
+  #     mlrMBO::setMBOControlTermination(iters = n_main) %>%
+  #     mlrMBO::setMBOControlInfill(crit = makeMBOInfillCritEI())
+  # }
 
-  if(type == "factor"){
+ # if(type == "factor"){
     
     cat(crayon::blue("[3] ") %+% 
       crayon::green("Discrete Search Space\n"))
@@ -218,7 +212,7 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
       setMBOControlTermination(
         iters = n_main
       )
-  }
+  #}
   
   if(n_obj > 1){
     control <- makeMBOControl(n.objectives = n_obj) %>%
@@ -238,5 +232,7 @@ run_mbo <- function(data, params, target, text, n_init = 5, n_main = 30, name = 
     
   kill_parallel_core(parallel)
   
-  return(list(obj = run, df = tidy(run, metric)))
+  final <- tidyMBO::tidy(run, const, data, metric)
+  
+  return(final)
 }
