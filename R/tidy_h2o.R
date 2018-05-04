@@ -113,7 +113,8 @@ fit_gbm <- function(container){
     sample_rate = NULL,
     stop_round = NULL,
     stop_tol = NULL,
-    nbins = NULL
+    nbins = NULL,
+    balance = F
   ) %>%
     check_list(container$params)
   
@@ -140,8 +141,9 @@ fit_gbm <- function(container){
     sample_rate = params$sample_rate,
     stopping_rounds = params$stop_round,
     stopping_tolerance = params$stop_tol,
-    nbins = params$nbins, 
+    nbins = params$nbins,  
     ### Global options
+    balance_classes = params$balance,
     nfolds = 4,
     fold_assignment = "Modulo",
     score_each_iteration = T,
@@ -178,6 +180,7 @@ fit_dnn <- function(container){
     #input_dropout_ratio = 0,# 0.1 or 0.2
     #hidden_dropout1 = 0,
     #hidden_dropout2 = 0, 
+    balance = F,
     l1 = 0, #force to 0
     l2 = 0, #  force small weights high spikes
     activation = "Rectifier"# c("Tanh", "TanhWithDropout", "Rectifier","RectifierWithDropout", "Maxout", "MaxoutWithDropout")
@@ -212,8 +215,9 @@ fit_dnn <- function(container){
     l1 = params$l1, #force to 0
     l2 = params$l2, #  force small weights high spikes
     activation = as.character(params$activation),
-    epochs = params$epochs,
+    epochs = params$epochs, 
     ### Global options
+    balance_classes = params$balance,
     nfolds = 4,
     fold_assignment = "Modulo",
     #balance_classes = T, 
