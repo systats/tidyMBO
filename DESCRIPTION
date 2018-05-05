@@ -19,7 +19,5 @@ Imports:
     progress,
     crayon,
     mlr,
-    mlrMBO,
-    slam,
-    data.table
+    mlrMBO
 RoxygenNote: 6.0.1
