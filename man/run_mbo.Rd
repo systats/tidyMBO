@@ -8,7 +8,7 @@ run_mbo(data, params, const = NULL, n_init = 5, n_main = 30, name = "",
   metric = "accuracy", parallel = F)
 }
 \arguments{
-\item{data}{}
+\item{data}{input}
 
 \item{params}{params}
 

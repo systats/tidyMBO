@@ -33,8 +33,8 @@ fit_glove <- function(container){
     ) %>% 
     keras::layer_global_average_pooling_1d() %>%
     keras::layer_dense(
-      units = length(unique(container$data$train[[params$target]])), 
-      activation = params$activation
+      units = length(unique(container$data$train[[container$params$target]])), 
+      activation = "sigmoid"
     ) %>%
     keras::compile(
       loss = params$loss,
@@ -45,7 +45,7 @@ fit_glove <- function(container){
   history <- model %>%
     keras::fit(
       x = container$data$train_input,
-      y = tidyTX::tx_onehot(container$data$train[[params$target]]),
+      y = tidyTX::tx_onehot(container$data$train[[container$params$target]]),
       batch_size = params$batch_size,
       epochs = params$epochs,
       validation_split = params$val_split, 
@@ -71,7 +71,7 @@ fit_lstm <- function(container){
     max_vocab = 2000,
     out_dim = 128,
     maxlen = 30,
-    out_fun = "softmax",
+    #out_fun = "softmax",
     loss = "binary_crossentropy",
     optimizer = "adam",
     metrics  = "accuracy",
@@ -91,16 +91,22 @@ fit_lstm <- function(container){
       output_dim = params$out_dim,
       input_length = params$maxlen
     ) %>% 
-    keras::layer_lstm(units = params$lstm_dim, dropout = params$lstm_drop, recurrent_dropout = params$rnn_drop) %>%
+    keras::layer_lstm(
+      units = params$lstm_dim 
+      #dropout = params$lstm_drop, 
+      #recurrent_dropout = params$rnn_drop
+    ) %>%
     keras::layer_dense(
       units = length(unique(container$data$train[[params$target]])), 
-      activation = params$activation
+      activation = "sigmoid"
     ) %>%
     keras::compile(
       loss = params$loss,
       optimizer = params$optimizer,
       metrics = params$metrics
     )
+  #summary(model)
+  #print("t1")
   
   history <- model %>%
     keras::fit(
@@ -112,6 +118,7 @@ fit_lstm <- function(container){
       verbose = F
     )
   
+  #print("t2")
   return(model)
 }
 
@@ -130,7 +137,7 @@ learn_keras_model <- function(container, reconstruct){
     model <- fit_lstm(container)
   }
   if(container$params$arch == "rnn"){
-    model <- fit_(container)
+    model <- fit_rnn(container)
   }
   if(container$params$arch == "glove"){
     model <- fit_glove(container)

@@ -7,7 +7,22 @@
 #' @return vectorizer
 #'
 #' @export
-build_vectorizer <- function(text, id, max_features){
+build_vectorizer <- function(text, 
+                             id
+                             #ngram,
+                             #max_vocab = NULL,
+                             #word_min, 
+                             #doc_prop_max
+                             #doc_prop_min = NULL
+                             ){
+  
+  # text = container$data$train[[container$params$text]]
+  # id = container$data$train$id
+  # #max_vocab = params$max_vocab
+  # ngram_min = params$ngram_min
+  # ngram_max = params$ngram_max
+  # word_min = params$word_min
+  # doc_prop_max = params$doc_prop_max
   
   it_train <- text2vec::itoken(
     text, 
@@ -15,18 +30,34 @@ build_vectorizer <- function(text, id, max_features){
     progressbar = F
   )
   
+  # if(ngram == "unigram"){
+  #   ngram_input  <- c(1L, 1L)
+  # } else if(ngram == "bigram"){
+  #   ngram_input <- c(1L, 2L)
+  # } else if(ngram == "trigram"){
+  #   ngram_input <- c(1L, 3L)
+  # } else {
+  #   ngram_input  <- c(1L, 1L)
+  # }
+
   vocab <- it_train %>%
-    text2vec::create_vocabulary() %>%
-    text2vec::prune_vocabulary(
-      vocab_term_max = max_features
+    text2vec::create_vocabulary(
+      #ngram = ngram_input
     )
+    # ) %>%
+    # text2vec::prune_vocabulary(
+    #   #vocab_term_max = max_vocab,
+    #   term_count_min = word_min, 
+    #   doc_proportion_max = doc_prop_max
+    #   #doc_proportion_min = doc_prop_min
+    # )
   
   vectorizer <- vocab %>% 
     text2vec::vocab_vectorizer()
   
-  train_input <- it_train %>% 
+  train_input <- it_train %>%
     text2vec::create_dtm(vectorizer)
-  
+
   return(vectorizer)
 }
 
@@ -40,13 +71,13 @@ build_vectorizer <- function(text, id, max_features){
 #'
 #' @export
 build_dtm <- function(vectorizer, text, id){
-  it_test <- text2vec::itoken(
+  it <- text2vec::itoken(
     text, 
     ids = id,
     progressbar = F
   )
   
-  dtm <- it_test %>% 
+  dtm <- it %>% 
     text2vec::create_dtm(vectorizer)
   
   return(dtm)
@@ -66,26 +97,34 @@ text_to_matrix <- function(container){
   #text <- "text_lemma"
   
   params <- list(
-    max_vocab = 2000
+    ngram = "unigram",
+    #max_vocab = NULL,
+    word_min = 2,
+    doc_prop_max = .8
+    #doc_prop_min = NULL
   ) %>%
     check_list(container$params)
   
 
   vec <- build_vectorizer(
-    text = container$data$train[[params$text]], 
-    id = container$data$train$id,
-    max_features = params$max_vocab
+    text = container$data$train[[container$params$text]], 
+    id = container$data$train$id
+    # ngram = params$ngram,
+    # word_min = params$word_min,
+    # doc_prop_max = params$doc_prop_max
+    # max_vocab = params$max_vocab,
+    # #doc_prop_min = params$doc_prop_min
   )
   
   train_input <- vec %>% 
     build_dtm(
-      text = container$data$train[[params$text]],
+      text = container$data$train[[container$params$text]],
       id = container$data$train$id
     )
   
   test_input <- vec %>% 
     build_dtm(
-      text = container$data$test[[params$text]],
+      text = container$data$test[[container$params$text]],
       id = container$data$test$id
     )
 

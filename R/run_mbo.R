@@ -11,6 +11,7 @@ run_mbo_steps <- function(container, metric = "accuracy", reconstruct = F){
   ### H2O Logic
   if(container$params$arch %in% c("gbm", "dnn", "xgboost", "nb")){
     out <- container %>%
+      #list(data = final, params = list(arch = "gbm", text = "text_lemma", target = "altright")) %>%
       text_to_matrix() %>%
       learn_h2o_model(reconstruct = reconstruct)
   }
@@ -18,7 +19,7 @@ run_mbo_steps <- function(container, metric = "accuracy", reconstruct = F){
   ### Keras Logic
   if(container$params$arch %in% c("glove", "fasttext", "lstm", "bilstm")){
     if(container$params$arch %in% c("mlp")){
-      out <- container %<>%
+      out <- container %>%
         text_to_matrix_keras() %>%
         learn_keras_model(reconstruct = reconstruct)    
     } else {
@@ -35,6 +36,8 @@ run_mbo_steps <- function(container, metric = "accuracy", reconstruct = F){
   } else {
     metric <- metric %>% 
       purrr::map_dbl(~ out$perform[[.x]])
+    
+    print(metric)
     
     return(metric) 
   }
@@ -82,7 +85,7 @@ progressively <- function(.f, .n, ...) {
 #' tidy MBO
 #'
 #' @data data input
-#' @param data 
+#' @param data input
 #' @param params params
 #' @param const constants
 #' @param n_init burn in iterations
@@ -164,7 +167,9 @@ run_mbo <- function(data, params, const = NULL, n_init = 5, n_main = 30, name = 
     as_tibble() %>%
     magrittr::set_colnames(value = var_names) %>%
     cbind(init, .)
-
+  
+  print(init)
+  
   type <- init %>%
     purrr::map(class) %>%
     purrr::map(~.x == "factor") %>%

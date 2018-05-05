@@ -107,47 +107,49 @@ fit_xgboost <- function(container){
 fit_gbm <- function(container){
   
   params <- list(
-    ntrees = NULL,
-    max_depth = NULL,
-    learn_rate = NULL,
-    sample_rate = NULL,
-    stop_round = NULL,
-    stop_tol = NULL,
-    nbins = NULL,
+    ntrees = 30,
+    max_depth = 3,
+    learn_rate = .3,
+    sample_rate = .7,
+    stop_round = 2,
+    stop_tol = .5,
+    nbins = 10,
     balance = F
   ) %>%
     check_list(container$params)
   
-  
   train_dtm <- container$data$train_input %>%
     h2o::as.h2o()
+  
   x <- colnames(train_dtm)
   
   y_col <- container$data$train[[container$params$target]] %>%
     as.factor() %>%
     as.h2o()
+  
   y <- colnames(y_col)
   
   h2o_train_dtm <- h2o::h2o.cbind(train_dtm, y_col)
   
-  
+
   gbm <- h2o.gbm(
     training_frame = h2o_train_dtm,
     x = x,                    
     y = y,    
     ntrees = params$ntress,
-    max_depth = params$max_depth, 
+    max_depth = params$max_depth,
     learn_rate = params$learn_rate,
     sample_rate = params$sample_rate,
     stopping_rounds = params$stop_round,
     stopping_tolerance = params$stop_tol,
-    nbins = params$nbins,  
-    ### Global options
+    nbins = params$nbins,
+    ## Global options
     balance_classes = params$balance,
+    #distribution = "bernoulli",
     nfolds = 4,
     fold_assignment = "Modulo",
     score_each_iteration = T,
-    seed = 2018, 
+    seed = 2018,
     verbose = F
   )
   
@@ -188,12 +190,16 @@ fit_dnn <- function(container){
   check_list(container$params)
   
   train_dtm <- container$data$train_input %>%
+    #as.matrix() %>%
+    #as.tibble() %>%
     h2o::as.h2o()
+  
   x <- colnames(train_dtm)
   
   y_col <- container$data$train[[container$params$target]] %>%
     as.factor() %>%
     as.h2o()
+  
   y <- colnames(y_col)
   
   h2o_train_dtm <- h2o::h2o.cbind(train_dtm, y_col)
@@ -239,14 +245,6 @@ fit_dnn <- function(container){
 #' @export
 learn_h2o_model <- function(container, reconstruct = F){
 
-  #params <- container$params
-  # target <- "party_id"
-  # text <- "text_lemma"
-  # container <- list(data = dt, params = NULL)
-  
-  #container <- text_to_matrix(container, text = "text_lemma")
-  #h2o.ls()
-
   if(container$params$arch == "gbm"){
     model <- fit_gbm(container)
   }
@@ -264,7 +262,7 @@ learn_h2o_model <- function(container, reconstruct = F){
     h2o::as.h2o()
   
   preds <- h2o::h2o.predict(model, newdata = test_dtm) %>%
-    as_tibble()
+    tibble::as_tibble()
   
   if(reconstruct){
     perform <- preds$predict
