@@ -34,7 +34,7 @@ fit_nb <- function(container){
     nfolds = 4,
     fold_assignment = "Modulo",
     score_each_iteration = T,
-    seed = 2018 
+    seed = 2018
     #verbose = F
   )
   
@@ -146,6 +146,7 @@ fit_gbm <- function(container){
     ## Global options
     balance_classes = params$balance,
     #distribution = "bernoulli",
+    keep_cross_validation_predictions = T,
     nfolds = 4,
     fold_assignment = "Modulo",
     score_each_iteration = T,
@@ -228,6 +229,7 @@ fit_dnn <- function(container){
     fold_assignment = "Modulo",
     #balance_classes = T, 
     score_each_iteration = T,
+    keep_cross_validation_predictions = T,
     seed = 2018, 
     verbose = F
   )

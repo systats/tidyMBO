@@ -7,7 +7,7 @@ output: html_notebook
 
 ```{r}
 # devtools::install_github("systats/tidyMBO")
-pacman::p_load(tidyverse, dplyr, purrr, rsample, data.table, magrittr, tidyTX, slam, ParamHelpers, data.table, mlr, mlrMBO, tidyMBO, devtools)
+pacman::p_load(tidyverse, dplyr, purrr, rsample, data.table, magrittr, tidyTX, slam, ParamHelpers, data.table, mlr, mlrMBO, tidyMBO, devtools, h2o)
 
 # keras::install_keras()
 set.seed(2018)
