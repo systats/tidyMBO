@@ -109,8 +109,6 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
 
   minimize <- list_metrics[metric] %>% unlist %>% as.logical()
 
-  cat(crayon::blue(":::::::::::::::::::MBO:::::::::::::::::\n")) 
-  
   ### Main Definition Function
   if(n_obj == 1) {
     constructor <- smoof::makeSingleObjectiveFunction(
@@ -150,10 +148,7 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
       par.set = ParamHelpers::getParamSet(constructor),
       fun = lhs::randomLHS
     )
-    
-    crayon::blue("[2] ") %+% 
-      cat(crayon::green("Burning in Random Design\n"))
-    
+
     progress_fun <- progressively(.f = constructor, .n = nrow(init))
     
     if(n_obj == 1){
@@ -212,13 +207,13 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
 
  # if(type == "factor"){
     
-    cat(crayon::blue("[3] ") %+% 
-      crayon::green("Discrete Search Space\n"))
-    
-    cat(crayon::blue("[4] ") %+% 
-      crayon::green("Surrogate Model: ") %+% 
-      crayon::red("Random Forest Regression\n"))
-    
+    # cat(crayon::blue("[3] ") %+% 
+    #   crayon::green("Discrete Search Space\n"))
+    # 
+    # cat(crayon::blue("[4] ") %+% 
+    #   crayon::green("Surrogate Model: ") %+% 
+    #   crayon::red("Random Forest Regression\n"))
+    # 
     surrogate <- makeLearner("regr.randomForest", predict.type = "se")
     
     control <- makeMBOControl() %>%
