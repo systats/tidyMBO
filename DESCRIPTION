@@ -19,5 +19,10 @@ Imports:
     progress,
     crayon,
     mlr,
-    mlrMBO
+    mlrMBO,
+    stringr,
+    ParamHelpers, 
+    text2vec,
+    slam,
+    data.table
 RoxygenNote: 6.0.1

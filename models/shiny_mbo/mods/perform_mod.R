@@ -96,7 +96,8 @@ perform_mod <- function(input, output, session, data){
     } else {
       data() %>%
         .[input$memory_rows_selected, ] %>%
-        dplyr::mutate(run_id = file %>% str_replace(".Rdata", "") %>% paste0(. , "_", step)) %>%
+        mutate(id = 1:n()) %>%
+        dplyr::mutate(run_id = file %>% str_replace(".Rdata", "") %>% paste0(. , "_", step, "_", id)) %>%
         dplyr::select(run_id, dplyr::everything()) 
     }
   })
@@ -168,10 +169,10 @@ perform_mod <- function(input, output, session, data){
     {paste0("rgb(255,", ., ",", ., ")")}
 
     library(DT)
-    DT::datatable(df, rownames = F) %>%
-      formatStyle(names(df %>% dplyr::select(-predicted)),
-                  backgroundColor = styleInterval(brks, clrs))
-      # formatStyle(
+    DT::datatable(df, rownames = F)# %>%
+      # formatStyle(names(df %>% dplyr::select(-predicted)),
+      #             backgroundColor = styleInterval(brks, clrs))
+      # # formatStyle(
       #   names(df),
       #   backgroundColor = 'black'
       # )

@@ -1,8 +1,10 @@
+# devtools::install_github("systats/tidyMBO")
 pacman::p_load(
   shiny, shiny.semantic, semantic.dashboard, DT, dplyr, tibble, stringr, 
-  shinyWidgets, shinyjs, h2o, keras, tidyTX, purrr, tidyr, tidyMBO
+  shinyWidgets, shinyjs, h2o, keras, tidyTX, purrr, tidyr, tidyMBO, magrittr
 )
-
+#devtools::install_github("Appsilon/shiny.semantic")
+#devtools::install_github("Appsilon/semantic.dashboard")
 source("mods/table_mod.R")
 source("mods/perform_mod.R")
 

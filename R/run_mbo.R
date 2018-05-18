@@ -93,7 +93,7 @@ progressively <- function(.f, .n, ...) {
 #' @return list(data = data, params = params)
 #'
 #' @export
-run_mbo <- function(data, params, const = NULL, n_init = 5, n_main = 30, name = "", metric = "accuracy", parallel = F){
+run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main = 30, name = "", metric = "accuracy", parallel = F){
 
   n_obj <- length(metric)
   #metric <- "accuracy"
@@ -114,7 +114,7 @@ run_mbo <- function(data, params, const = NULL, n_init = 5, n_main = 30, name = 
   ### Main Definition Function
   if(n_obj == 1) {
     constructor <- smoof::makeSingleObjectiveFunction(
-      name = name,
+      #name = name,
       fn = function(x) {
         perform <- run_mbo_steps(container = list(data = data, params = c(const, x)), metric = metric)
         return(perform)
@@ -143,39 +143,51 @@ run_mbo <- function(data, params, const = NULL, n_init = 5, n_main = 30, name = 
     #   crayon::red(paste0(" (", paste(metric, collapse = ", ") ,")\n"))) 
   }
   
-  init <- ParamHelpers::generateDesign(
-    n = n_init,
-    par.set = ParamHelpers::getParamSet(constructor),
-    fun = lhs::randomLHS
-  )
-
-  crayon::blue("[2] ") %+% 
-    cat(crayon::green("Burning in Random Design\n"))
-  
-  progress_fun <- progressively(.f = constructor, .n = nrow(init))
-
-  if(n_obj == 1){
-    var_names <- "y"
-  } else { 
-    var_names <- paste0("y_", 1:n_obj)
+  if(is.null(prior)){
+    
+    init <- ParamHelpers::generateDesign(
+      n = n_init,
+      par.set = ParamHelpers::getParamSet(constructor),
+      fun = lhs::randomLHS
+    )
+    
+    crayon::blue("[2] ") %+% 
+      cat(crayon::green("Burning in Random Design\n"))
+    
+    progress_fun <- progressively(.f = constructor, .n = nrow(init))
+    
+    if(n_obj == 1){
+      var_names <- "y"
+    } else { 
+      var_names <- paste0("y_", 1:n_obj)
+    }
+    
+    init <- init %>%
+      split(seq_along(init[[1]])) %>%
+      purrr::map(progress_fun) %>%
+      purrr::reduce(rbind) %>%
+      as_tibble() %>%
+      magrittr::set_colnames(value = var_names) %>%
+      cbind(init, .)
+  } else {
+    cont_names <- names(const)
+    init <- prior %>% 
+      dplyr::rename(y = accuracy) %>% 
+      dplyr::select(everything(), y) %>%
+      .[!names(.) %in% c(cont_names, "step", "exec.time")] %>%
+      dplyr::mutate_if(is.character, as.factor) %>%
+      as_tibble()
   }
+
+  #names(const)# %>% map(~.x[1])
+  init %>% arrange(y) %>% glimpse()
   
-  init <- init %>%
-    split(seq_along(init[[1]])) %>%
-    purrr::map(progress_fun) %>%
-    purrr::reduce(rbind) %>%
-    as_tibble() %>%
-    magrittr::set_colnames(value = var_names) %>%
-    cbind(init, .)
-  
-  print(init)
-  
-  type <- init %>%
-    purrr::map(class) %>%
-    purrr::map(~.x == "factor") %>%
-    unlist %>%
-    any() %>%
-    ifelse(., "factor", "integer")
+  # type <- init %>%
+  #   purrr::map(class) %>%
+  #   purrr::map(~.x == "factor") %>%
+  #   unlist %>%
+  #   any() %>%
+  #   ifelse(., "factor", "integer")
 
   # if(type == "integer"){
   #   

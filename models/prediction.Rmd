@@ -6,9 +6,14 @@ output: html_notebook
 
 ## Packages
 
+* Heather Heyer
+* Charlottsville whole day 
+* Terror atacks
+* Trump Bombing Syria
+
 ```{r}
 # devtools::install_github("systats/tidyTX")
-pacman::p_load(dplyr, ggplot2, googlesheets, openxlsx, stringr, rvest, dplyr, ggplot2, keras, mlrMBO, tidyMBO, ggthemes, Smisc, randomForest, parallelMap, emoa, DiceKriging, magrittr, h2o, ParamHelpers)
+pacman::p_load(dplyr, ggplot2, googlesheets, openxlsx, stringr, rvest, dplyr, ggplot2, keras, mlrMBO, tidyMBO, ggthemes, Smisc, randomForest, parallelMap, emoa, DiceKriging, magrittr, h2o, ParamHelpers, text2vec)
 #devtools::install_github("systats/tidyMBO")
 set.seed(2018)
 ggplot2::theme_set(ggthemes::theme_few())
@@ -66,7 +71,7 @@ df_all <- bind_cols(
       platform == "yt" ~ "YouTube"
     )
   ) %>%
-  mutate(altright = case_when(
+  mutate(altright1 = case_when(
     identity > 0 ~ 1 ,
     race > 0 ~ 1 ,
     anti_sem > 0 ~ 1 ,
@@ -75,7 +80,44 @@ df_all <- bind_cols(
     #vict == 2 ~ 1 ,
     TRUE ~ 0
   )) %>% 
-  mutate(altlight = case_when(
+    mutate(altright2 = case_when(
+    identity > 0 ~ 1 ,
+    race > 0 ~ 1 ,
+    anti_sem > 0 ~ 1 ,
+    #moral > 0 ~ 1 ,
+    imm == 3 ~ 1 ,
+    #vict == 2 ~ 1 ,
+    TRUE ~ 0
+  )) %>% 
+  mutate(altright3 = case_when(
+    identity > 0 ~ 1 ,
+    race > 0 ~ 1 ,
+    anti_sem > 0 ~ 1 ,
+    #moral > 0 ~ 1 ,
+    imm == 3 ~ 1 ,
+    vict == 2 ~ 1 ,
+    TRUE ~ 0
+  )) %>% 
+    mutate(altright3 = case_when(
+    identity > 0 ~ 1 ,
+    race > 0 ~ 1 ,
+    anti_sem > 0 ~ 1 ,
+    #moral > 0 ~ 1 ,
+    imm == 3 ~ 1 ,
+    vict == 2 ~ 1 ,
+    TRUE ~ 0
+  )) %>% 
+  mutate(altright4 = case_when(
+    anti_mus > 0 ~ 1 ,
+    identity > 0 ~ 1 ,
+    race > 0 ~ 1 ,
+    anti_sem > 0 ~ 1 ,
+    #moral > 0 ~ 1 ,
+    imm == 3 ~ 1 ,
+    vict == 2 ~ 1 ,
+    TRUE ~ 0
+  )) %>% 
+  mutate(altlight1 = case_when(
     anti_mus > 0 ~ 1 ,
     elite > 0 ~ 1 ,
     anti_fem > 0 ~ 1 ,
@@ -85,29 +127,99 @@ df_all <- bind_cols(
     # anti_fem > 1 ~ 1 ,
     TRUE ~ 0
   )) %>% 
-  mutate(altlight = ifelse(altright == 1 & altlight == 1, 0, altlight)) %>% 
-  mutate(alt_type2 = case_when(
-    altright == 1 ~ 2,
-    altlight == 1 ~ 1,
-    altright == 0 & altlight == 0 ~ 0
-  )) %>%
-  mutate(alt_dummy = ifelse(alt_type2 != 0, 1, 0))
+    mutate(altlight2 = case_when(
+    #anti_mus > 0 ~ 1 ,
+    elite > 0 ~ 1 ,
+    anti_fem > 0 ~ 1 ,
+    left > 0 ~ 1,
+    #imm == 2 ~ 1 ,
+    #vict == 3 ~ 1 ,
+    # anti_fem > 1 ~ 1 ,
+    TRUE ~ 0
+  )) %>% 
+    mutate(altlight3 = case_when(
+    anti_mus > 0 ~ 1 ,
+    elite > 0 ~ 1 ,
+    anti_fem > 0 ~ 1 ,
+    left > 0 ~ 1,
+    imm == 2 ~ 1 ,
+    vict == 3 ~ 1,
+    TRUE ~ 0
+  )) %>% 
+    mutate(altlight4 = case_when(
+    #anti_mus > 0 ~ 1 ,
+    elite > 0 ~ 1 ,
+    anti_fem > 0 ~ 1 ,
+    left > 0 ~ 1,
+    imm == 2 ~ 1 ,
+    vict == 3 ~ 1,
+    TRUE ~ 0
+  )) %>% 
+  mutate(
+    altright = altright3 == 1 | (altlight3 == 0 & altright3 == 0), 
+    altlight = altlight3 == 1 | (altlight3 == 0 & altright3 == 0), 
+    mus = altright4 == 1 | (altlight4 == 0 & altright4 == 0)
+  ) %>% 
+  # mutate(alt_type2 = case_when(
+  #   altright == 1 ~ 2,
+  #   altlight == 1 ~ 1,
+  #   altright == 0 & altlight == 0 ~ 0
+  # )) %>%
+  #mutate(alt_dummy = ifelse(alt_type2 != 0, 1, 0)) %>%
+  filter(!irony)
   #arrange(desc(altright), desc(altlight)) 
 
+dt_altlight <- bind_rows(
+  df_all %>%
+    filter(altlight) %>%
+    filter(altlight3 == 0) %>%
+    sample_n(size = 2000),
+  df_all %>% 
+    filter(altlight) %>%
+    filter(altlight3 ==1)  
+)
+  
+# df_sub_0 <- df_all %>%
+#   filter(altlight != 1) %>%
+#   sample_n(size = 2000)
+# 
+# df_sub <- bind_rows(df_rest, df_sub_0)
 
-df_rest <- df_all %>%
-  filter(alt_type2 != 0)
+dt_altright <- bind_rows(
+  df_all %>%
+    filter(altright) %>%
+    filter(altright3 == 0) %>%
+    sample_n(size = 2000),
+  df_all %>% 
+    filter(altright) %>%
+    filter(altright3 ==1)  
+)
 
-df_sub_0 <- df_all %>%
-  filter(alt_type2 == 0) %>%
-  sample_n(size = 2000)
+dt_mus <- bind_rows(
+  df_all %>%
+    filter(mus) %>%
+    filter(altright4 == 0) %>%
+    sample_n(size = 2000),
+  df_all %>% 
+    filter(mus) %>%
+    filter(altright4 ==1)  
+)
 
-df_sub <- bind_rows(df_rest, df_sub_0)
 
 
-table(df_sub$alt_type2)
-df_all <- df_sub
-glimpse(df_all)
+table(dt_mus$altright4)
+table(dt_altright$altlight4)
+
+# df_sub_0 <- df_all %>%
+#   filter(altlight != 1) %>%
+#   sample_n(size = 2000)
+# 
+# df_sub <- bind_rows(df_rest, df_sub_0)
+# 
+# # 
+# # table(df_sub$alt_type2)
+# df_all <- df_sub
+# # glimpse(df_all)
 ```
 
 
@@ -176,20 +288,20 @@ twitter_dict <- list(
   "chosen people" = " jew ",
   "hebrew" = " jew ",
   "heeb" = " jew swearword ",
-  "libtards" = " liberal swearword ",
+  "libtard." = " liberal swearword ",
   "n.gg.." = " race swearword ",
   "kike" = " jew swearword ",
   "left" = "liberal",
-  "femnazi." = " woman swearword ",
+  "feminazi." = " woman swearword ",
   "bitch" = " woman swearword ",
   "slut" = " woman swearword ",
   "whore" = " woman swearword ",
   "cunt" = " woman swearword ",
   "goy.*? " = "goy",
-  "wetbag" = " race swearword ",
-  "chink" = " race swearword ",
+  "wetbag." = " race swearword ",
+  "chink." = " race swearword ",
   "dindu." = " race swearword ",
-  "raghead" = " race swearword "
+  "raghead." = " race swearword "
 )
 
 prep <- df_all %>%
@@ -219,11 +331,56 @@ prep <- df_all %>%
 final <- prep %>%
   mutate(text = df_all[["text"]]) %>%
   arrange(sample(1:length(id), length(id))) %>%
-  rename(index = id) %>%
+  mutate(index = id) %>%
   tidyMBO::split_data(p = .8)
 
 #table(final$test$alt_dummy)
 ```
+
+```{r}
+clean_fun <- function(df){
+  prep <- df %>%
+  mutate(id = 1:n()) %>%
+  mutate(text = text %>% 
+    stringr::str_to_lower() %>%
+    tidyTX::tx_replace_punc() %>%
+    #tidyTX::tx_replace_twitter(replace_hash = T, replace_hndl = T) %>%
+    tidyTX::tx_replace_url() %>%
+    tidyTX::tx_replace_punc() %>%
+    tidyTX::tx_map_dict(twitter_dict, key1 = 0, key2 = 1)
+  ) %>%
+  tidytext::unnest_tokens(word, text, to_lower = F) %>% 
+  left_join(tidyTX::hash_lemma_en, by = "word") %>%
+  mutate(lemma = ifelse(is.na(lemma), word, lemma)) %>%
+  dplyr::anti_join(tidyTX::stop_words_en, by = "word") %>%
+  filter(!stringr::str_detect(lemma, "[[:digit:]]|[[:punct:]]")) %>%
+  filter(nchar(word) > 1) %>%
+  group_by(id) %>%
+  summarise(
+    text_word = paste(word, collapse = " "),
+    text_lemma = paste(lemma, collapse = " ")) %>%
+  ungroup() %>%
+  bind_cols(., df %>% dplyr::select(-text)) 
+
+
+final <- prep %>%
+  mutate(text = df[["text"]]) %>%
+  arrange(sample(1:length(id), length(id))) %>%
+  mutate(index = id) %>%
+  tidyMBO::split_data(p = .8)
+
+return(final)
+}
+
+altright_final <- clean_fun(dt_altright)
+altlight_final <- clean_fun(dt_altlight)
+mus_final <- clean_fun(dt_mus)
+```
+
+
+
+
+
 
 ```{r}
 corpus_description <- function(data, text){
@@ -277,8 +434,8 @@ params_glove <- makeParamSet(
     makeIntegerParam("max_vocab", lower = 2000, upper = 3000),
     makeIntegerParam("maxlen", lower = 10, upper = 30),
     makeIntegerParam("batch_size", lower = 1, upper = 20),
-    makeIntegerParam("out_dim", lower = 20, upper = 200),
-    makeDiscreteParam("out_fun", values = c("softmax", "sigmoid"))
+    makeIntegerParam("out_dim", lower = 20, upper = 200)
+    #makeDiscreteParam("out_fun", values = c("softmax", "sigmoid"))
   )
 
 results_glove <- run_mbo(
@@ -286,11 +443,12 @@ results_glove <- run_mbo(
     params = params_glove, 
     const = list(
       arch = "glove", 
-      target = "alt_type", 
+      target = "altright", 
       text = "text_lemma"
     ),
     n_init = 2, 
-    n_main = 3
+    n_main = 2,
+    metric = "auc"
   )
 ```
 
@@ -300,18 +458,29 @@ dnn <- get(load("shiny_mbo/perform/dnn_lemma_0.Rdata"))
 gbm <- get(load("shiny_mbo/perform/gbm_1_11.Rdata"))
 glove <- get(load("shiny_mbo/results/gbm_1.Rdata"))
 
-dnn$params %>%
-  arrange(desc(accuracy))
+results_glove$params %>%
+  arrange(desc(auc))
 
 final_glove <- results_glove$params %>%
-  arrange(desc(accuracy)) %>%
-  slice(12) %>%
+  arrange(desc(auc)) %>%
+  slice(1) %>%
   as.list() %>%
   list(params = ., data = results_glove$data) %>%
-  run_mbo_steps(reconstruct = T)
+  run_mbo_steps(reconstruct = T, metric = "auc")
+
+final_glove$params$arch <- "lstm"
+
+container <- gbm
+container$data <- final
+m <- fit_glove(final_glove)
+
+final_glove %>%
+    run_mbo_steps(reconstruct = T, metric = "auc")
+
+glimpse(final_glove$data$train)
 
 #mat <- table(dnn$perform, dnn$data$test$alt_type)
-mat <- table(gbm$perform, gbm$data$test$alt_type)
+mat <- table(final_glove$perform, final_glove$data$test$altright)
 
 df <- mat %>%
   as_tibble() %>%
@@ -319,15 +488,15 @@ df <- mat %>%
   rename(preds = Var1)
 
 nn <- tibble(
-  predict = gbm$perform
+  predict = final_glove$perform
 ) %>%
-  bind_cols(., gbm$data$test)
+  bind_cols(., final_glove$data$test)
 
 glimpse(nn)
 
 nn %>% 
-  dplyr::mutate(error = predict != alt_type) %>% 
-  dplyr::select(identity:alt_type, error, -irony) %>%
+  dplyr::mutate(error = predict != altright) %>% 
+  dplyr::select(identity:altright, error, -irony) %>%
   tidyr::gather(var, val, -error) %>%
   dplyr::group_by(error, var, val) %>%
   dplyr::tally() %>%
@@ -362,9 +531,6 @@ nn %>%
 
 
 ```{r}
-
-
-
 brks <- quantile(as.matrix(mat), probs = seq(.05, .95, .05), na.rm = TRUE)
 clrs <- round(seq(255, 40, length.out = length(brks) + 1), 0) %>%
   {paste0("rgb(255,", ., ",", ., ")")}
@@ -403,25 +569,28 @@ params_lstm <- makeParamSet(
     makeIntegerParam("epochs", lower = 3, upper = 6),
     makeIntegerParam("lstm_dim", lower = 20, upper = 200),
     makeNumericParam("lstm_drop", lower = 0, upper = .5 ),
-    makeNumericParam("rnn_drop", lower = 0, upper = .5 ),
-    makeDiscreteParam("out_fun", values = c("softmax", "sigmoid"))
+    makeNumericParam("rnn_drop", lower = 0, upper = .5 )
+    #makeDiscreteParam("out_fun", values = c("softmax", "sigmoid"))
   )
 
-nrow(final2$train)
+
 results_lstm <- run_mbo(
-    data = final, 
+    data = altright_final, 
     params = params_lstm, 
     const = list(
       arch = "lstm", 
-      target = "alt_type", 
+      target = "altright1", 
       text = "text_lemma"
-    ),
-    n_init = 5, 
-    n_main = 30
+    ), 
+    n_init = 2, 
+    n_main = 3, 
+    metric = "accuracy"
   )
 
+names(final$train)
 #save(results_lstm, file = "../shiny_mbo/results/results_lstm_final.Rdata")
 ```
+
 
 ```{r}
 perform <- results_lstm
@@ -446,35 +615,67 @@ library(h2o)
 h2o.init(nthreads = 2)
 h2o.no_progress()
 
-params_gbm <- makeParamSet(
-    makeIntegerParam("max_vocab", lower = 1500, upper = 2500),
-    makeIntegerParam("ntrees", lower = 20, upper = 150),
-    makeIntegerParam("max_depth", lower = 2, upper = 10), # before stopping
-    makeNumericParam("learn_rate", lower = .1, upper = .9), # need for splitting
-    makeNumericParam("sample_rate", lower = .5, upper = .9), # use a 
-    makeNumericParam("stop_tol", lower = .001, upper = .1),
-    makeIntegerParam("stop_round", lower = 1, upper = 3), # use a
-    makeIntegerParam("nbins", lower = 10, upper = 20) # need for splitting
-  )
+# container <- list(
+#   data = final, 
+#   params = 
+#     c(
+#       list(
+#         arch = "gbm", 
+#         target = "altright", 
+#         text = "text_lemma"
+#       ),
+#       list(
+#         ntrees = 30,
+#         max_depth = 4, 
+#         learn_rate = .3,
+#         sample_rate = .8,
+#         stop_tol = .01,
+#         stop_round = 1,
+#         nbins = 10
+#       )
+#     )
+#   ) %>%
+#   text_to_matrix()
+# 
+# ncol(container$data$train_input)
+# sum(container$data$train_input)
 
+params_gbm <- makeParamSet(
+    makeDiscreteParam("ngram", values = c("unigram", "bigram")),
+    #makeDiscreteParam("text", values = c("text_lemma", "text_word")),
+    #makeIntegerParam("term_min", lower = 2, upper = 5),
+    makeIntegerParam("max_vocab", lower = 2000, upper = 4000),
+    makeIntegerParam("ntrees", lower = 20, upper = 150),
+    makeIntegerParam("max_depth", lower = 2, upper = 10),
+    makeNumericParam("learn_rate", lower = .1, upper = .9), 
+    makeNumericParam("sample_rate", lower = .1, upper = .9), 
+    makeNumericParam("stop_tol", lower = .001, upper = .1),
+    makeIntegerParam("stop_round", lower = 1, upper = 3), 
+    makeIntegerParam("nbins", lower = 10, upper = 20)
+  )
+load("shiny_mbo/results/gbm_2.Rdata")
+table(results_gbm$train$altright1)
+results_gbm$params
 results_gbm <- run_mbo(
-    data = final, 
+    data = altright_final, 
     params = params_gbm, 
+    prior = results_gbm$params,
     const = list(
       arch = "gbm", 
-      target = "alt_type2", 
-      text = "text_word"
-    ),
-    n_init = 5, 
-    n_main = 30
+      target = "altright1", 
+      text = "text_lemma",
+      balance = T
+    ), 
+    n_init = 6, 
+    n_main = 30, 
+    metric = "accuracy"
   )
-
-h2o.shutdown(prompt = F)
+save(results_gbm, file = "shiny_mbo/results/gbm_20.Rdata")
+h2o::h2o.shutdown(prompt = F)
 ```
 
 
 ```{r, eval = F}
-# save(results_gbm, file = "shiny_mbo/results/gbm_text_word.Rdata")
 perform <- results_gbm
 perform$params %>%
   arrange(desc(accuracy)) %>%
@@ -484,23 +685,43 @@ perform$params %>%
 
 ```{r}
 h2o.init()
-final_model <- perform %>%
+final_model <- perform$params %>%
+  arrange(desc(auc)) %>%
+  slice(1) %>%
+  as.list() %>%
+  list(params = ., data = perform$data) %>%
+  run_mbo_steps(
+    metric = "auc", 
+    reconstruct = T
+  )
+
+container <- perform$params %>%
   arrange(desc(accuracy)) %>%
   slice(1) %>%
   as.list() %>%
-  run_mbo_steps(
-    data = final, 
-    const = list(arch = "gbm"), 
-    target = "alt_type", 
-    text = "text_lemma", 
-    metric = "accuracy", 
-    reconstruct = T
-  )
+  list(params = ., data = perform$data)
+
+model <- perform$params %>%
+  arrange(desc(accuracy)) %>%
+  slice(1) %>%
+  as.list() %>%
+  list(params = ., data = perform$data) %>%
+  text_to_matrix() %>%
+  fit_gbm()
+
+h2o::h2o.saveModel(model, path = "models", force = T)
+model1 <- h2o::h2o.loadModel("models/GBM_model_R_1525530020939_263")
+save(container, file = "models/container_gbm1.Rdata")
 
 # p <- h2o.performance(model, test_hex)
 # cm <- h2o.confusionMatrix(p)
 
-table(final_model$perform$predict, final$test$alt_type)
+table(final_model$perform, final_model$data$test$altright)
+
+Metrics::accuracy(final_model$perform, final_model$data$test$altright)
+
+
+names(final_model$data$test$race)
 
 nn <- cbind(pred = final_model$perform$predict, final$test)
 glimpse(nn)
@@ -521,12 +742,14 @@ h2o.init(nthreads = 2)
 h2o.no_progress()
 
 params_dnn <- makeParamSet(
-    makeIntegerParam("max_features", lower = 2500, upper = 3000),
+    makeDiscreteParam("ngram", values = c("unigram", "bigram")),
+    #makeIntegerParam("term_min", lower = 2, upper = 5),
+    makeIntegerParam("max_vocab", lower = 2000, upper = 3000),
     makeIntegerParam("hidden1", lower = 60, upper = 200),
     makeIntegerParam("hidden2", lower = 60, upper = 200), # before stopping
-    makeIntegerParam("epochs", lower = 4, upper = 8), # need for splitting
-    # makeNumericParam("rho", lower = .95, upper = .9999999), # use a random 70% of the rows 
-    makeNumericParam("epsilon", lower = 1e-9, upper = 1e-07),
+    makeIntegerParam("epochs", lower = 3, upper = 6), # need for splitting
+    # makeNumericParam("rho", lower = .95, upper = .9999999),
+    #makeNumericParam("epsilon", lower = 1e-9, upper = 1e-07),
     #makeNumericParam("rate", lower = 0.0005, upper = 0.05),
     #makeNumericParam("rate_annealing", lower = 1e-07, upper = 1e-05), # use a
     #makeNumericParam("momentum_start", lower = 0, upper = 1), # need for splitting
@@ -539,15 +762,18 @@ params_dnn <- makeParamSet(
   )
 
 results_dnn <- run_mbo(
-    data = final, 
+    data = altright_final, 
     params = params_dnn, 
+    #prior = results_dnn$params,
     const = list(
       arch = "dnn", 
-      target = "alt_type", 
-      text = "text_word"
+      target = "altright1", 
+      text = "text_lemma",
+      balance = T
     ),
     n_init = 6, 
-    n_main = 30
+    n_main = 30,
+    metric = "accuracy"
   )
 h2o.shutdown(prompt = F)
 ```
@@ -555,9 +781,9 @@ h2o.shutdown(prompt = F)
 
 
 ```{r, eval = F}
-#save(results_gbm, file = "results/gbm_xxxx.Rdata")
+#save(results_dnn, file = "shiny_mbo/results/dnn_1.Rdata")
 perform <- results_dnn
-perform %>%
+perform$params %>%
   arrange(desc(accuracy)) %>%
   glimpse()
 ```
@@ -565,23 +791,95 @@ perform %>%
 
 ```{r}
 h2o.init()
-final_model1 <- perform %>%
+dnn <- results_dnn$params %>%
   arrange(desc(accuracy)) %>%
   slice(1) %>%
   as.list() %>%
+  list(params = ., data = results_dnn$data) %>% 
+  text_to_matrix() %>%
+  #fit_dnn()
   run_mbo_steps(
-    data = final, 
-    const = list(arch = "dnn"), 
-    target = "alt_type", 
-    text = "text_lemma", 
-    metric = "accuracy", 
+    metric = "accuracy",
     reconstruct = T
   )
+table(results_dnn$params$activation)
+table(dnn$perform, dnn$data$test$altright1)
+
+
+perform1 <- get(load("shiny_mbo/results/gbm_1.Rdata"))
+gbm <- perform1$params %>%
+  arrange(desc(accuracy)) %>%
+  slice(1) %>%
+  as.list() %>%
+  list(params = ., data = perform1$data) %>% 
+  text_to_matrix() %>%
+  fit_gbm()
+
+
+con <- perform1$params %>%
+  arrange(desc(accuracy)) %>%
+  slice(1) %>%
+  as.list() %>%
+  list(params = ., data = perform1$data) %>% 
+  text_to_matrix() 
+
+train_dtm <- con$data$train_input %>%
+  h2o::as.h2o()
+
+x <- colnames(train_dtm)
+
+y_col <- con$data$train[[con$params$target]] %>%
+  as.factor() %>%
+  as.h2o()
+y <- colnames(y_col)
+
+h2o_train_dtm <- h2o::h2o.cbind(train_dtm, y_col)
+  
+
+h2o::h2o.stackedEnsemble()
+# Train a stacked ensemble using the GBM and RF above
+devtools::install_github("h2oai/h2o-3/h2o-r/ensemble/h2oEnsemble-package")
+ensemble <- h2o.stackedEnsemble(
+  x = x,
+  y = y,
+  training_frame = h2o_train_dtm,
+  #model_id = "fart1",
+  base_models = list(gbm, dnn)
+)
+
+models <- list(gbm, dnn)
+metalearner <- "h2o.glm.wrapper"
+library(h2oEnsemble)
+stack <- h2oEnsemble::h2o.stack(models = models,
+                   response_frame = y_col[y],
+                   metalearner = metalearner, 
+                   seed = 1,
+                   keep_levelone_data = TRUE)
+
+  test_dtm <- con$data$test_input %>%
+    h2o::as.h2o()
+  
+  
+  
+# Train a stacked ensemble using the GBM and RF above
+ensemble <- h2o.stackedEnsemble(
+  x = x, y = y, training_frame = h2o_train_dtm,
+  base_models = list(dnn, gbm))  
+  
+  preds <- h2oEnsemble::predict.h2o.ensemble(stack, newdata = as.h2o(con$data$test_input)) %>%
+    tibble::as_tibble()
+  
+  perform <- get_perform(container$data$test[[container$params$target]], preds$predict)
+  
+  
+# Compute test set performance:
+perf <- h2o.ensemble_performance(stack, newdata = test_dtm)
+
 
 # p <- h2o.performance(model, test_hex)
 # cm <- h2o.confusionMatrix(p)
 
-table(final_model1$perform$predict, final$test$alt_type)
+table(final_model1$perform, final_model1$data$test$race)
 ```
 
 

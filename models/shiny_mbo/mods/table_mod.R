@@ -31,6 +31,27 @@ get_top_step <- function(x){
     .$step
 }
 
+get_target <- function(x){
+  x %>%
+    dplyr::arrange(desc(accuracy)) %>%
+    dplyr::slice(1) %>%
+    .$target
+}
+
+get_text <- function(x){
+  x %>%
+    dplyr::arrange(desc(accuracy)) %>%
+    dplyr::slice(1) %>%
+    .$text
+}
+
+get_arch <- function(x){
+  x %>%
+    dplyr::arrange(desc(accuracy)) %>%
+    dplyr::slice(1) %>%
+    .$arch
+}
+
 get_type <- function(x){
   #x = "lstm_boy"
   val <- case_when(
@@ -74,6 +95,12 @@ table_mod <- function(input, output, session){
         purrr::map(~ get_load(.x)),
       top_acc = data %>%
         purrr::map_dbl(~ get_top_accuracy(.x)),
+      target = data %>%
+        purrr::map_chr(~ get_target(.x)),
+      text = data %>%
+        purrr::map_chr(~ get_text(.x)),
+      arch = data %>%
+        purrr::map_chr(~ get_arch(.x)),
       top_step = data %>%
         purrr::map_dbl(~ get_top_step(.x))
       # arch = paste0("results/", file) %>%

@@ -5,7 +5,6 @@ date: "14 4 2018"
 output: github_document
 ---
 
-
 ## Packages
 
 ```{r}
@@ -22,7 +21,6 @@ ggplot2::theme_set(ggthemes::theme_few())
 
 ## Data
 
-
 ```{r}
 dt <- get(load("Readme_files/df_clean.Rdata")) %>% 
   #mutate(index = 1:n()) %>%
@@ -35,41 +33,108 @@ dt <- get(load("Readme_files/df_clean.Rdata")) %>%
 
 ```{r}
 explore <- corpus_description(data = dt$train, text = "text_lemma")
+
 explore$token$tokens %>%
   ggplot(aes(n)) +
   geom_histogram() +
   xlim(0, 30)
 ```
 
-## Hyper Params
+
+## H2O GBM
 
 ```{r}
-params <- makeParamSet(
-    makeIntegerParam("max_features", lower = 2000, upper = 10000),
-    makeIntegerParam("maxlen", lower = 10, upper = 40),
-    makeIntegerParam("batch_size", lower = 10, upper = 30),
-    makeIntegerParam("output_dim", lower = 60, upper = 200),
-    makeDiscreteParam("output_fun", values = c("softmax", "sigmoid")),
-    makeDiscreteParam("arch", values = c("fasttext", "lstm", "bilstm"))
-    ### LSTM only
-    #makeIntegerParam("lstm_units", lower = 60, upper = 300, requires = quote(arch == "lstm")),
-    #makeNumericParam("dropout", lower = .1, upper = .5, requires = quote(arch == "lstm")),
-    #makeNumericParam("recurrent_dropout", lower = .1, upper = .5, requires = quote(arch == "lstm"))
+library(h2o)
+h2o.init(nthreads = 2)
+h2o.no_progress()
+
+# container <- list(
+#   data = final, 
+#   params = 
+#     c(
+#       list(
+#         arch = "gbm", 
+#         target = "altright", 
+#         text = "text_lemma"
+#       ),
+#       list(
+#         ntrees = 30,
+#         max_depth = 4, 
+#         learn_rate = .3,
+#         sample_rate = .8,
+#         stop_tol = .01,
+#         stop_round = 1,
+#         nbins = 10
+#       )
+#     )
+#   ) %>%
+#   text_to_matrix()
+# 
+# ncol(container$data$train_input)
+# sum(container$data$train_input)
+
+params_gbm <- makeParamSet(
+    makeDiscreteParam("ngram", values = c("unigram", "bigram")),
+    #makeDiscreteParam("text", values = c("text_lemma", "text_word")),
+    #makeIntegerParam("term_min", lower = 2, upper = 5),
+    makeIntegerParam("max_vocab", lower = 2000, upper = 4000),
+    makeIntegerParam("ntrees", lower = 20, upper = 150),
+    makeIntegerParam("max_depth", lower = 2, upper = 10),
+    makeNumericParam("learn_rate", lower = .1, upper = .9), 
+    makeNumericParam("sample_rate", lower = .1, upper = .9), 
+    makeNumericParam("stop_tol", lower = .001, upper = .1),
+    makeIntegerParam("stop_round", lower = 1, upper = 3), 
+    makeIntegerParam("nbins", lower = 10, upper = 20)
+  )
+# load("shiny_mbo/results/gbm_2.Rdata")
+
+results_gbm <- run_mbo(
+    data = dt, 
+    params = params_gbm, 
+    #prior = results_gbm$params,
+    const = list(
+      arch = "gbm", 
+      target = "party_id", 
+      text = "text_lemma",
+      balance = T
+    ), 
+    n_init = 6, 
+    n_main = 30, 
+    metric = "accuracy"
+  )
+
+save(results_gbm, file = "gbm_1.Rdata")
+h2o::h2o.shutdown(prompt = F)
+```
+
+
+
+
+```{r}
+library(h2o)
+
+h2o.init(
+  nthreads=-1,  ## -1: use all available threads
+  max_mem_size = "2G")
+# h2o.removeAll()
+
+results_mixed <- run_mbo(
+    data = dt, 
+    params = params, 
+    const = list(
+      target = "party_id",
+      balance = T
+    ),
+    n_init = 5, 
+    n_main = 2,
+    metric = c("accuracy") # experimental stage
   )
 ```
 
 
-## Single MLP Model
-
-```{r}
-tokenizer <- keras::text_tokenizer(num_words = 5000)
-keras::fit_text_tokenizer(tokenizer, x = dt$train$text_lemma)
-train_input <- sequences_to_matrix(tokenizer, dt$train$text_lemma, mode = 'binary')
-```
 
 
 ## Run Main
-
 
 ```{r}
 listLearners("regr")
