@@ -214,22 +214,22 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
     #   crayon::green("Surrogate Model: ") %+% 
     #   crayon::red("Random Forest Regression\n"))
     # 
-    surrogate <- makeLearner("regr.randomForest", predict.type = "se")
+    surrogate <- mlr::makeLearner("regr.randomForest", predict.type = "se")
     
-    control <- makeMBOControl() %>%
-      setMBOControlInfill(
+    control <- mlrMBO::makeMBOControl() %>%
+      mlrMBO::setMBOControlInfill(
         crit = makeMBOInfillCritCB(cb.lambda = 5),
         opt.focussearch.points = 500
       ) %>%
-      setMBOControlTermination(
+      mlrMBO::setMBOControlTermination(
         iters = n_main
       )
   #}
   
   if(n_obj > 1){
-    control <- makeMBOControl(n.objectives = n_obj) %>%
-      setMBOControlTermination(iters = n_main) %>%
-      setMBOControlInfill(crit = makeMBOInfillCritDIB())
+    control <- mlrMBO::makeMBOControl(n.objectives = n_obj) %>%
+      mlrMBO::setMBOControlTermination(iters = n_main) %>%
+      mlrMBO::setMBOControlInfill(crit = makeMBOInfillCritDIB())
   }
   
   start_parallel_core(parallel, cores = 2)
