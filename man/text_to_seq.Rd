@@ -5,9 +5,9 @@
 \alias{text_to_seq}
 \title{text_to_seq}
 \usage{
-text_to_seq(container, text)
+text_to_seq(container)
 
-text_to_seq(container, text)
+text_to_seq(container)
 }
 \arguments{
 \item{container}{...}
@@ -15,8 +15,6 @@ text_to_seq(container, text)
 \item{text}{...}
 
 \item{container}{...}
-
-\item{text}{...}
 }
 \value{
 list(data = data, params = params)

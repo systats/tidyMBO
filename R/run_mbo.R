@@ -97,7 +97,6 @@ progressively <- function(.f, .n, ...) {
 #' @return list(data = data, params = params)
 #'
 #' @export
-metric <- "accuracy"
 run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main = 30, name = "", metric = "accuracy", parallel = F){
 
   n_obj <- length(metric)
