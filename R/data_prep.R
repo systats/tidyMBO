@@ -61,7 +61,7 @@ build_dtm <- function(vectorizer, text, id){
 #' @return list(data = data, params = params)
 #'
 #' @export
-text_to_matrix <- function(container, text){
+text_to_matrix <- function(container){
   
   #container <- list(data=dt, params = params)
   #text <- "text_lemma"
@@ -75,20 +75,20 @@ text_to_matrix <- function(container, text){
   
 
   vec <- build_vectorizer(
-    text = container$data$train[[text]], 
+    text = container$data$train[[container$params$text]], 
     id = container$data$train$id,
     max_features = params$max_features
   )
   
   train_input <- vec %>% 
     build_dtm(
-      text = container$data$train[[text]],
+      text = container$data$train[[container$params$text]],
       id = container$data$train$id
     )
   
   test_input <- vec %>% 
     build_dtm(
-      text = container$data$test[[text]],
+      text = container$data$test[[container$params$text]],
       id = container$data$test$id
     )
 
@@ -103,11 +103,10 @@ text_to_matrix <- function(container, text){
 #' seq tokenizer
 #'
 #' @param container ...
-#' @param text ...
 #' @return list(data = data, params = params)
 #'
 #' @export
-text_to_seq <- function(container, text){
+text_to_seq <- function(container){
   
   params <- list(
     max_features = 2000,
@@ -117,14 +116,14 @@ text_to_seq <- function(container, text){
     check_list(container$params)
   
   tokenizer <- keras::text_tokenizer(num_words = params$max_features)
-  keras::fit_text_tokenizer(tokenizer, x = container$data$train[[text]])
+  keras::fit_text_tokenizer(tokenizer, x = container$data$train[[container$params$text]])
   
   train_input <- tokenizer %>%
-    keras::texts_to_sequences(container$data$train[[text]]) %>%
+    keras::texts_to_sequences(container$data$train[[container$params$text]]) %>%
     keras::pad_sequences(maxlen = params$maxlen, value = 0)
   
   test_input <- tokenizer %>%
-    keras::texts_to_sequences(container$data$test[[text]]) %>%
+    keras::texts_to_sequences(container$data$test[[container$params$text]]) %>%
     keras::pad_sequences(maxlen = params$maxlen, value = 0)
   
   data <- c(container$data, list(train_input = train_input, test_input = test_input))
@@ -173,9 +172,9 @@ text_to_matrix_keras <- function(container, text){
 #' @export
 split_data <- function(data, p){
   
-  train_id  <- caret::createDataPartition(y = data$index, p = p, list = F)
-  train <- data[train_id,]
-  test  <- data[-train_id,]
+  split_id <- sample(c(T, F), size = nrow(data), replace = T, prob = c(p, 1-p))
+  train <- data[split_id,]
+  test  <- data[-split_id,]
   
   return(list(train = train, test = test))
 }

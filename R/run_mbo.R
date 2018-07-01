@@ -10,24 +10,28 @@ run_mbo_steps <- function(container, metric = "accuracy", reconstruct = F){
 
   ### H2O Logic
   if(container$params$arch %in% c("gbm", "dnn", "xgboost", "nb")){
+    if(container$params$text_process){
+      container <- container %>%
+        #list(data = final, params = list(arch = "gbm", text = "text_lemma", target = "altright")) %>%
+        text_to_matrix()
+        #learn_h2o_text_model(reconstruct = reconstruct)
+    }
+    
     out <- container %>%
-      #list(data = final, params = list(arch = "gbm", text = "text_lemma", target = "altright")) %>%
-      text_to_matrix() %>%
       learn_h2o_model(reconstruct = reconstruct)
   }
   
   ### Keras Logic
   if(container$params$arch %in% c("glove", "fasttext", "lstm", "bilstm")){
-    if(container$params$arch %in% c("mlp")){
-      out <- container %>%
-        text_to_matrix_keras() %>%
-        learn_keras_model(reconstruct = reconstruct)    
-    } else {
-      out <- container %>%
-        text_to_seq() %>%
-        learn_keras_model(reconstruct = reconstruct)
-    }
+    out <- container %>%
+      text_to_seq() %>%
+      learn_keras_model(reconstruct = reconstruct)
   }
+  if(container$params$arch == "mlp"){
+    out <- container %>%
+      text_to_matrix_keras() %>%
+      learn_keras_model(reconstruct = reconstruct)    
+  } 
   
   #out <- list(perform = perform, params = params)
   
@@ -93,6 +97,7 @@ progressively <- function(.f, .n, ...) {
 #' @return list(data = data, params = params)
 #'
 #' @export
+metric <- "accuracy"
 run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main = 30, name = "", metric = "accuracy", parallel = F){
 
   n_obj <- length(metric)
@@ -107,7 +112,9 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
     #ll = T
   ) # Minimize?
 
-  minimize <- list_metrics[metric] %>% unlist %>% as.logical()
+  minimize <- list_metrics[metric] %>% 
+    unlist %>% 
+    as.logical()
 
   ### Main Definition Function
   if(n_obj == 1) {
@@ -167,7 +174,7 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
   } else {
     cont_names <- names(const)
     init <- prior %>% 
-      dplyr::rename(y = accuracy) %>% 
+      dplyr::rename_("y" = metric) %>% 
       dplyr::select(everything(), y) %>%
       .[!names(.) %in% c(cont_names, "step", "exec.time")] %>%
       dplyr::mutate_if(is.character, as.factor) %>%
@@ -175,7 +182,7 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
   }
 
   #names(const)# %>% map(~.x[1])
-  init %>% arrange(y) %>% glimpse()
+  init %>% arrange(desc(y)) %>% glimpse()
   
   # type <- init %>%
   #   purrr::map(class) %>%
@@ -218,7 +225,7 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
     
     control <- mlrMBO::makeMBOControl() %>%
       mlrMBO::setMBOControlInfill(
-        crit = makeMBOInfillCritCB(cb.lambda = 5),
+        crit = mlrMBO::makeMBOInfillCritCB(cb.lambda = 5),
         opt.focussearch.points = 500
       ) %>%
       mlrMBO::setMBOControlTermination(
@@ -232,7 +239,7 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
       mlrMBO::setMBOControlInfill(crit = makeMBOInfillCritDIB())
   }
   
-  start_parallel_core(parallel, cores = 2)
+  #start_parallel_core(parallel, cores = 2)
   
   run <- mlrMBO::mbo(
     constructor,
@@ -242,7 +249,7 @@ run_mbo <- function(data, params, const = NULL, prior = NULL, n_init = 5, n_main
     show.info = T
   )
     
-  kill_parallel_core(parallel)
+  #kill_parallel_core(parallel)
   
   final <- tidyMBO::tidy(run, const, data, metric)
   

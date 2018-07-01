@@ -68,6 +68,8 @@ check_list <- function(a, b){
 #'
 #' @export
 get_perform <- function(actual, predicted){
+  levels(predicted) <- unique(actual)
+  
   list(
     accuracy = Metrics::accuracy(actual, predicted),
     auc = Metrics::auc(actual, predicted),

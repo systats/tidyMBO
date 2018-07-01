@@ -13,16 +13,20 @@ fit_nb <- function(container){
   ) %>%
     check_list(container$params)
   
-  train <- container$data$train %>%
+  train_dtm <- container$data$train_input %>%
     h2o::as.h2o()
+  x <- colnames(train_dtm)
   
-  x <- colnames(container$data$train)
-  y <- container$params$target
-  x <- setdiff(x, y)
+  y_col <- container$data$train[[container$params$target]] %>%
+    as.factor() %>%
+    as.h2o()
+  y <- colnames(y_col)
+  
+  h2o_train_dtm <- h2o::h2o.cbind(train_dtm, y_col)
   
   
   nb <- h2o.naiveBayes(
-    training_frame = train,
+    training_frame = h2o_train_dtm,
     x = x,                    
     y = y,
     laplace = params$laplace,# > 1 integer Specify the Laplace smoothing parameter. 
@@ -58,15 +62,20 @@ fit_xgboost <- function(container){
   ) %>%
     check_list(container$params)
   
-  train <- container$data$train %>%
+  train_dtm <- container$data$train_input %>%
     h2o::as.h2o()
+  x <- colnames(train_dtm)
   
-  x <- colnames(container$data$train)
-  y <- container$params$target
-  x <- setdiff(x, y)
+  y_col <- container$data$train[[container$params$target]] %>%
+    as.factor() %>%
+    as.h2o()
+  y <- colnames(y_col)
+  
+  h2o_train_dtm <- h2o::h2o.cbind(train_dtm, y_col)
+  
   
   xgboost <- h2o.xgboost(
-    training_frame = train,
+    training_frame = h2o_train_dtm,
     x = x,                    
     y = y,
     ntrees = params$ntrees,
@@ -109,15 +118,22 @@ fit_gbm <- function(container){
   ) %>%
     check_list(container$params)
   
-  train <- container$data$train
-  x <- container$params$features
-  y <- container$params$target
+  train_dtm <- container$data$train_input %>%
+    h2o::as.h2o()
   
-  #x <- colnames(container$data$train)
-  #x <- setdiff(x, y)
+  x <- colnames(train_dtm)
   
+  y_col <- container$data$train[[container$params$target]] %>%
+    as.factor() %>%
+    as.h2o()
+  
+  y <- colnames(y_col)
+  
+  h2o_train_dtm <- h2o::h2o.cbind(train_dtm, y_col)
+  
+
   gbm <- h2o.gbm(
-    training_frame = train,
+    training_frame = h2o_train_dtm,
     x = x,                    
     y = y,    
     ntrees = params$ntress,
@@ -157,7 +173,6 @@ fit_dnn <- function(container){
   params <- list(
     hidden1 = 80,
     hidden2 = 30,
-    hidden3 = 10,
     epochs = 10,
     #rho = .99,
     epsilon = 1e-08,
@@ -166,38 +181,42 @@ fit_dnn <- function(container){
     #rate_decay = 1,
     #momentum_start = 0, # #0.5
     #input_dropout_ratio = 0,# 0.1 or 0.2
-    hidden_dropout1 = 0,
-    hidden_dropout2 = 0, 
+    #hidden_dropout1 = 0,
+    #hidden_dropout2 = 0, 
     balance = F,
     l1 = 0, #force to 0
     l2 = 0, #  force small weights high spikes
-    activation = "Rectifier"
+    activation = "Rectifier"# c("Tanh", "TanhWithDropout", "Rectifier","RectifierWithDropout", "Maxout", "MaxoutWithDropout")
   ) %>%
   check_list(container$params)
   
-  train <- container$data$train
-  x <- container$params$features
-  y <- container$params$target
+  train_dtm <- container$data$train_input %>%
+    #as.matrix() %>%
+    #as.tibble() %>%
+    h2o::as.h2o()
   
-  #x <- colnames(container$data$train)
-  #x <- setdiff(x, y)
+  x <- colnames(train_dtm)
+  
+  y_col <- container$data$train[[container$params$target]] %>%
+    as.factor() %>%
+    as.h2o()
+  
+  y <- colnames(y_col)
+  
+  h2o_train_dtm <- h2o::h2o.cbind(train_dtm, y_col)
   
   dnn <- h2o::h2o.deeplearning(
-    training_frame = train,
+    training_frame = h2o_train_dtm,
     x = x,                    
     y = y,    
-    hidden = c(
-      params$hidden1, 
-      params$hidden2, 
-      ifelse(params$hidden3 == 0, NULL, params$hidden3)
-    ),
-    rho = params$rho,
-    #epsilon = params$epsilon,
-    rate = params$rate,
-    #rate_annealing = params$rate_annealing,
+    hidden = c(params$hidden1, params$hidden2),
+    #hidden_dropout_ = c(params$hidden_dropout1, params$hidden_dropout2),# .5 default
+    #rho = params$rho,
+    epsilon = params$epsilon,
+    #rate = params$rate,
+    rate_annealing = params$rate_annealing,
     #rate_decay = params$rate_decay,
-    momentum_start = params$momentum_start, # #0.5
-    momentum_stable = 0.99,
+    #momentum_start = params$momentum_start, # #0.5
     #input_dropout_ratio = params$input_dropout_ratio,# 0.1 or 0.2
     #hidden_dropout_ratios = c(params$hidden_dropout1, params$hidden_dropout2),
     l1 = params$l1, #force to 0
@@ -229,28 +248,31 @@ fit_dnn <- function(container){
 learn_h2o_model <- function(container, reconstruct = F){
 
   if(container$params$arch == "gbm"){
-    model <- suppressMessages(suppressWarnings(fit_gbm(container)))
+    model <- fit_gbm(container)
   }
   if(container$params$arch == "dnn"){
-    model <- suppressMessages(suppressWarnings(fit_dnn(container)))
+    model <- fit_dnn(container)
   }
   if(container$params$arch == "xgboost"){
-    model <- suppressWarnings(fit_xgboost(container))
+    model <- fit_xgboost(container)
   }
   if(container$params$arch == "nb"){
-    model <- suppressWarnings(fit_nb(container))
+    model <- fit_nb(container)
   }
   
-  preds <- h2o::h2o.predict(model, newdata = container$data$test) %>%
+  test_dtm <- container$data$test_input %>%
+    h2o::as.h2o()
+  
+  preds <- h2o::h2o.predict(model, newdata = test_dtm) %>%
     tibble::as_tibble()
   
   if(reconstruct){
     perform <- preds$predict
   } else {
-    perform <- get_perform(as_tibble(container$data$test)[[container$params$target]], preds$predict)
+    perform <- get_perform(container$data$test[[container$params$target]], preds$predict)
   }
   
-  #h2o::h2o.removeAll() 
+  h2o::h2o.removeAll() 
   
   return(list(perform = perform, params = container$params, data = container$data))
 }
